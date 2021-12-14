@@ -44,6 +44,34 @@ It is recommended to deploy the Connector service in Google Run configured to "R
 
 > Important: If "Require Authentication" is set, the Google IAM Service Account used by the Subscription must include the role of `Cloud Run Invoker`.
 
+#### Pub/Sub message contents
+
+The received Pub/Sub message becomes available to the Connector service as a JSON object with following example message contents:
+
+```json
+{
+  "message": {
+    "attributes": {
+      "AA": "BB",
+      "CC": "DD",
+      "EE": "FF",
+      "googclient_schemaencoding": "JSON"
+    },
+    "data": "eyJTdHJpbmdGaWVsZCI6ICJTaGluZSBUZXN0IiwgIkZsb2F0RmllbGQiOiAyLjE0MTUsICJCb29sZWFuRmllbGQiOiBmYWxzZX0=",
+    "messageId": "3470081450253332",
+    "message_id": "3470081450253332",
+    "orderingKey": "QWERTY",
+    "publishTime": "2021-12-02T20:20:53.37Z",
+    "publish_time": "2021-12-02T20:20:53.37Z"
+  },
+  "subscription": "projects/my-gcp-project-1234/subscriptions/mytopic-run-sub"
+}
+```
+
+Beyond the actual payload that is base64-encoded in the `message.data` field above, there are a number of fields that shall be conveyed as metadata to the Solace PubSub+ event broker.
+
+The sample Connector code will provide an example how to provide above field values as metadata using [Solace-specific HTTP headers](#pubsub-event-broker-rest-api-for-inbound-messaging) in the PubSub+ REST API Request message.
+
 #### Solace PubSub+ Connection details as GCP Secret
 
 The Connector service in Cloud Run will access the PubSub+ event broker REST Messaging service connection details from a secret which is configured to be available through the `SOLACE_BROKER_CONNECTION` environment variable. This is recommended security best practice because connection details include credentials to authenticate the Connector service, as a REST client to PubSub+.
@@ -108,11 +136,11 @@ The connection secret shall contain following example information:
 }
 ```
 
-Credentials are conveyed in the Authorization header, 'username:password' encoded in base64, for example: `Authorization: Basic bXl1c2VyOm15cGFzcw==`
+Credentials are conveyed in the Authorization header of the REST request with 'username:password' encoded in base64, for example: `Authorization: Basic bXl1c2VyOm15cGFzcw==`
 
 ##### Client Certificate authentication
 
-Here the Username is derived from the Common Name (CN) used in the TLS Client Certificate signed by a Certificate Authority that is also trusted by the broker. This Username must be also provisioned in the broker.
+Here the Username is derived from the Common Name (CN) used in the TLS Client Certificate signed by a Certificate Authority that is also trusted by the broker. This Username must be also provisioned in the broker and it shall be ensured that Client Certificate authentication is enabled.
 
 Refer to a [step-by-step configuration guide for PubSub+ Cloud](https://docs.solace.com/Cloud/ght_client_certs.htm?Highlight=Client%20Certificate%20authentication) or the [detailed general configuration guide in Solace documentation](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Client-Cert). 
 
@@ -125,6 +153,8 @@ The connection secret shall contain the Client Certificate, along with the Clien
   "ClientKey": "-----BEGIN PRIVATE KEY------\n+etc\n+etc\n+etc\n-----END PRIVATE KEY-----"
 }
 ```
+
+Here no Authorization header is required in the REST request, the `SSLContext` object in the code will take care of using the provided secret and key.
 
 ##### OAuth 2.0 authentication
 
