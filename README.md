@@ -8,15 +8,15 @@ From the [many options to connect](https://www.solace.dev/), a growing number of
 
 ## Assumptions
 
-This guide assumes you understand the basics of:
+This guide assumes basic understanding of:
 
 * Solace PubSub+ [core messaging concepts](https://docs.solace.com/Basics/Core-Concepts.htm)
 * Google Cloud Platform (GCP) [Cloud Pub/Sub](https://cloud.google.com/pubsub), [Cloud Run](https://cloud.google.com/run) and [Secret Manager](https://cloud.google.com/secret-manager) services
 * Python programming language
 
 It is also assumed you have access to:
-* GCP with appropriate admin rights, or [signed up for a free GCP account](https://console.cloud.google.com/freetrial/signup)
 * Solace PubSub+ Event Broker, or [signed up for a free PubSub+ Cloud account](https://docs.solace.com/Cloud/ggs_login.htm)
+* GCP with appropriate admin rights, or [signed up for a free GCP account](https://console.cloud.google.com/freetrial/signup)
 
 ## Solution overview
 
@@ -40,23 +40,25 @@ The Connector service, deployed in Cloud Run, is implemented in Python v3.9 in t
 
 The Google Pub/Sub Subscription is configured to use [Push delivery](https://cloud.google.com/pubsub/docs/push) which immediately calls the REST trigger URL of the Connector service when a message becomes available that matches the subscription.
 
-It is recommended to deploy the Connector service in Google Run set to "Require Authentication". This will use Oauth 2.0 between Pub/Sub and Run, and authentication/authorization will be handled automatically in GCP.
+It is recommended to deploy the Connector service in Google Run set to "Require Authentication". This will use OAuth 2.0 between Pub/Sub and Run with authentication/authorization automatically handled within GCP.
 
 > Important: If "Require Authentication" is set the Google IAM Service Account used by the Subscription must include the role of `Cloud Run Invoker`.
 
-#### PubSub+ connection details as secret
+#### PubSub+ Connection details as Secret
 
 The Connector service in Cloud Run will access the PubSub+ event broker REST Messaging service connection details from a secret which is configured to be available through the `SOLACE_BROKER_CONNECTION` environment variable. This is recommended security best practice because connection details include credentials to authenticate the Connector service, as a REST client to PubSub+.
 
+The Secret details can be updated through Secret Manaager.
+
 > Important: The Google IAM Service Account to be used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
-### PubSub+ Event Broker REST API for inbound messaging
+#### PubSub+ Event Broker REST API for inbound messaging
 
-REST publishing clients or REST producers [publish events into the event broker](https://docs.solace.com/Open-APIs-Protocols/Using-REST.htm) using the REST API. The ingested events will be converted to the same [internal message format](https://docs.solace.com/Basics/Message-What-Is.htm) as produced by any other API and can also be consumed by any other supported API.
+PubSub+ REST API clients are called REST publishing clients or REST producers. They [publish events into a PubSub+ event broker](https://docs.solace.com/Open-APIs-Protocols/Using-REST.htm) using the REST API. The ingested events will be converted to the same [internal message format](https://docs.solace.com/Basics/Message-What-Is.htm) as produced by any other API and can also be consumed by any other supported API.
 
-> Note: this guide is using the [REST messaging mode](https://docs.solace.com/Open-APIs-Protocols/REST-get-start.htm#When) of the Solace REST API.
+> Note: this guide is using [REST messaging mode](https://docs.solace.com/Open-APIs-Protocols/REST-get-start.htm#When) of the Solace REST API.
 
-The following conversions apply:
+The following REST to PubSub+ message conversions apply:
 
 | REST protocol element | PubSub+ message | Additional Reference in Solace Docementation|
 |----------|:-------------:|------:|
