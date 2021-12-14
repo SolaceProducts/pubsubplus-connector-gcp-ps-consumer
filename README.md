@@ -34,21 +34,36 @@ Messages published to the Google Pub/Sub Topic will now be delivered to the PubS
 
 #### Connector service in GCP Cloud Run
 
-The Connector service, deployed in Cloud Run, is implemented in Python v3.9 in this example. The same functionality can be adapted to any other programming language and used in Cloud Run. The Connector service could have also been deployed in Google Cloud Functions or App Engine as other options.
+The Connector service, deployed in Cloud Run, is implemented in Python v3.9 in this example. The same functionality can be adapted to any other programming language and used in Cloud Run. The Connector service could have also been deployed in Google Cloud Functions or App Engine as alternatives.
 
 #### GCP Pub/Sub Push delivery
 
-The Google Pub/Sub Subscription is configured to use [Push delivery](https://cloud.google.com/pubsub/docs/push) which immediately calls the REST trigger URL of the Connector service when a message becomes available that matches the subscription.
+The Google Pub/Sub Subscription is set to use [Push delivery](https://cloud.google.com/pubsub/docs/push) which immediately calls the REST trigger URL of the Connector service when a message becomes available that matches the subscription.
 
-It is recommended to deploy the Connector service in Google Run set to "Require Authentication". This will use OAuth 2.0 between Pub/Sub and Run with authentication/authorization automatically handled within GCP.
+It is recommended to deploy the Connector service in Google Run configured to "Require Authentication". This will use OAuth 2.0 between Pub/Sub and Run with authentication/authorization automatically handled within GCP.
 
-> Important: If "Require Authentication" is set the Google IAM Service Account used by the Subscription must include the role of `Cloud Run Invoker`.
+> Important: If "Require Authentication" is set, the Google IAM Service Account used by the Subscription must include the role of `Cloud Run Invoker`.
 
 #### Solace PubSub+ Connection details as GCP Secret
 
 The Connector service in Cloud Run will access the PubSub+ event broker REST Messaging service connection details from a secret which is configured to be available through the `SOLACE_BROKER_CONNECTION` environment variable. This is recommended security best practice because connection details include credentials to authenticate the Connector service, as a REST client to PubSub+.
 
-The Secret details can be updated through Secret Manager.
+We will be using a simple flat JSON structure for the connection details:
+```json
+{
+  "Host": "https://myhost:9443",
+  "AuthScheme": "basic",
+  :
+  "field": "value",
+  :
+}
+```
+Where:
+* `Host` provides the event broker REST service endpoint IP or FQDN including the port. Transport must be secure, using HTTPS
+* `AuthScheme` defines the authentication scheme to use, see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
+* Additional fields are specific to the `AuthScheme`
+
+Secrets can be set and updated through Secret Manager and the Connector service will use the latest Secret configured.
 
 > Important: The Google IAM Service Account to be used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
@@ -60,7 +75,7 @@ PubSub+ REST API clients are called "REST publishing clients" or "REST producers
 
 The following REST to PubSub+ message conversions apply:
 
-| REST protocol element | PubSub+ message | Additional Reference in Solace Docementation|
+| REST protocol element | PubSub+ message | Additional Reference in Solace Documentation|
 |----------|:-------------:|------:|
 | Request `host:port` | Maps to the Solace `message-vpn` to be used for the message | [Solace PubSub+ Event Broker Message VPN Selection](https://docs.solace.com/RESTMessagingPrtl/Solace-Router-Interactions.htm#VPN-Selection)
 | Request path: `/QUEUE/queue-name` or `/TOPIC/topic-string`| Solace Queue or Topic destination for the message | [REST HTTP Client to Solace Event Broker HTTP Server](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#Messagin) |
@@ -69,6 +84,60 @@ The following REST to PubSub+ message conversions apply:
 | Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding Solace message attribute or property | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
 | REST request body| The message body (application data) |
 | REST HTTP response | For persistent messages, the 200 OK is returned after the message has been successfully stored on the event broker, otherwise an error code | [HTTP Responses from Event Broker to REST HTTP Clients](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Status-Codes.htm#Producer-on-Post)
+
+#### PubSub+ REST API Client authentication
+
+The following authentication schemes are supported:
+* Basic
+* Client Certificate
+* OAuth 2.0 (PubSub+ release 9.13 and later)
+
+The PubSub+ Event Broker must be configured to use one of the above options for REST API clients. For more details refer to the [Solace documentation about Client Authentication](https://docs.solace.com/Overviews/Client-Authentication-Overview.htm).
+
+##### Basic authentication
+
+This is based on a shared Username and Password that is configured in the broker. If using PubSub+ Cloud, it comes [preconfigured](https://docs.solace.com/Cloud/ght_select_correct_username_pw.htm) with Basic authentication. Refer to the Solace documentation for [advanced configuration](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Basic).
+
+The connection secret shall contain following example information:
+```json
+{
+  "Host": "https://myhost:9443",
+  "AuthScheme": "basic",
+  "Username": "myuser",
+  "Password": "mypass"
+}
+```
+
+Credentials are conveyed in the Authorization header, 'username:password' encoded in base64, for example: `Authorization: Basic bXl1c2VyOm15cGFzcw==`
+
+##### Client Certificate authentication
+
+Here the Username is derived from the Common Name (CN) used in the TLS Client Certificate signed by a Certificate Authority that is also trusted by the broker. This Username must be also provisioned in the broker.
+
+Refer to a [step-by-step configuration guide for PubSub+ Cloud](https://docs.solace.com/Cloud/ght_client_certs.htm?Highlight=Client%20Certificate%20authentication) or the [detailed general configuration guide in Solace documentation](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Client-Cert). 
+
+The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that here line breaks have been replaced by `\n` or it is also acceptable to simply delete them:
+```json
+{
+  "Host": "https://mr-1js1tiv17mwh.messaging.solace.cloud:9443",
+  "AuthScheme": "client-cert",
+  "ClientCert": "-----BEGIN CERTIFICATE-----\n+etc\n+etc\n+etc\n-----END CERTIFICATE-----",
+  "ClientKey": "-----BEGIN PRIVATE KEY------\n+etc\n+etc\n+etc\n-----END PRIVATE KEY-----"
+}
+```
+
+##### OAuth 2.0 authentication
+
+
+
+
+
+
+
+
+
+
+
 
 
 
