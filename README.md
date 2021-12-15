@@ -200,7 +200,7 @@ The recommended broker configuration is:
 
 ## Connector implementation
 
-The Python code implementing the Connector is available from the GitHub repo of this project: [`python-samples\run\gcp-pubsub-to-solace-pubsubplus\main.py`](/blob/main/python-samples/run/gcp-pubsub-to-solace-pubsubplus/main.py)
+The Python code implementing the Connector is available from the GitHub repo of this project: [`python-samples\run\gcp-pubsub-to-solace-pubsubplus\main.py`](python-samples/run/gcp-pubsub-to-solace-pubsubplus/main.py)
 
 ## Quick Start
 
