@@ -57,9 +57,9 @@ The received Pub/Sub message becomes available to the Connector service as a JSO
       "EE": "FF",
       "googclient_schemaencoding": "JSON"
     },
-    "data": "eyJTdHJpbmdGaWVsZCI6ICJTaGluZSBUZXN0IiwgIkZsb2F0RmllbGQiOiAyLjE0MTUsICJCb29sZWFuRmllbGQiOiBmYWxzZX0=",
-    "messageId": "3470081450253332",
-    "message_id": "3470081450253332",
+    "data": "eyJTdHJpbmdGaWVsZCI6ICCb29sZWFuRmllbGQiOiBmYWxzZX0=",
+    "messageId": "12345",
+    "message_id": "12345",
     "orderingKey": "QWERTY",
     "publishTime": "2021-12-02T20:20:53.37Z",
     "publish_time": "2021-12-02T20:20:53.37Z"
@@ -93,7 +93,7 @@ Where:
 
 Secrets can be set and updated through Secret Manager and the Connector service will use the latest Secret configured.
 
-> Important: The Google IAM Service Account to be used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
+> Important: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
 ### PubSub+ Event Broker REST API for inbound messaging
 
@@ -140,11 +140,11 @@ Credentials are conveyed in the Authorization header of the REST request with 'u
 
 #### Client Certificate authentication
 
-Here the Username is derived from the Common Name (CN) used in the TLS Client Certificate signed by a Certificate Authority that is also trusted by the broker. This Username must be also provisioned in the broker and it shall be ensured that Client Certificate authentication is enabled.
+Here the Username is derived from the Common Name (CN) used in the TLS Client Certificate signed by a Certificate Authority that is also trusted by the broker. This Username must be also provisioned in the broker under Client Usernames and it shall be ensured that Client Certificate authentication is enabled.
 
 Refer to a [step-by-step configuration guide for PubSub+ Cloud](https://docs.solace.com/Cloud/ght_client_certs.htm?Highlight=Client%20Certificate%20authentication) or the [detailed general configuration guide in Solace documentation](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Client-Cert). 
 
-The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that here line breaks have been replaced by `\n` or it is also acceptable to simply delete them:
+The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that line breaks have been replaced by `\n` or as another option it is also acceptable to simply remove them:
 ```json
 {
   "Host": "https://mr-1js1tiv17mwh.messaging.solace.cloud:9443",
@@ -154,40 +154,49 @@ The connection secret shall contain the Client Certificate, along with the Clien
 }
 ```
 
-Here no Authorization header is required in the REST request, the `SSLContext` object in the code will take care of using the provided secret and key.
+Using Client Certificate authentication no Authorization header is required in the REST request, the `SSLContext` object in the code will take care of using the provided client secret and key at TLS connection setup.
 
 #### OAuth 2.0 authentication
 
+Since the Connector service runs in GCP, this example will conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) and returns an JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service.
+
+The connection secret shall be provided as follows:
+```json
+{
+  "Host": "https://myhost:9443",
+  "AuthScheme": "oauth",
+  "Audience": "myaudience"
+}
+```
+where Audience is the `OAuth Client ID` in the OAuth profile configured on the broker.
+
+The generated Google JWT will contain:
+```json
+{
+  "aud": "myaudience",
+  "azp": "123456789",
+  "email": "my-service-account-name@my-gcp-project-1234.iam.gserviceaccount.com",
+  "email_verified": true,
+  "exp": 1638980106,
+  "iat": 1638976506,
+  "iss": "https://accounts.google.com",
+  "sub": "123456789"
+}
+```
+The recommended broker configuration is:
+* OAuth authentication enabled
+* OAuth profile defined as follows:
+* `OAuth Role` set as `Client`
+* `Issuer Identifier` set to `https://accounts.google.com`
+* `Discovery Endpoint`set `https://accounts.google.com/.well-known/openid-configuration`
+* `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used; or `email`, which is the Email setting of the same service account. The corresponding Client Username must then be configured in the broker
+* `Required ID Token Type`is set to `JWT`; and
+* Validate Type is enabled.
+
+## Connector implementation
 
 
-
-
-
-
-
-
-
-
-
-
-
-### Using Solace REST
-
-### Authentication
-  § Basic, Client cert, Oauth 2.0
-  § Secure storage of Credentials (Secrets)
-  
-### Transparency, target and header mapping
-
-### Message Body Decoding and Adaptation
-
-## Pre-requisites
-
-### GCP setup
-
-### Solace broker setup
-
-## Quick Start example with Steps
+## Quick start guide
 
 Pre-requisites
 - GCP project
