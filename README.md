@@ -147,7 +147,7 @@ Refer to a [step-by-step configuration guide for PubSub+ Cloud](https://docs.sol
 The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that line breaks have been replaced by `\n` or as another option it is also acceptable to simply remove them:
 ```json
 {
-  "Host": "https://mr-1js1tiv17mwh.messaging.solace.cloud:9443",
+  "Host": "https:/myhost:9443",
   "AuthScheme": "client-cert",
   "ClientCert": "-----BEGIN CERTIFICATE-----\n+etc\n+etc\n+etc\n-----END CERTIFICATE-----",
   "ClientKey": "-----BEGIN PRIVATE KEY------\n+etc\n+etc\n+etc\n-----END PRIVATE KEY-----"
@@ -200,7 +200,7 @@ The recommended broker configuration is:
 
 ## Connector implementation
 
-
+The Python code implementing the Connector is available from the GitHub repo of this project: [`python-samples\run\gcp-pubsub-to-solace-pubsubplus\main.py`](/python-samples/run/gcp-pubsub-to-solace-pubsubplus)
 
 ## Quick Start
 
@@ -314,9 +314,23 @@ Client Certificate authentication
 Follow https://docs.solace.com/Cloud/ght_client_certs.htm
 
 
+## Contributing
 
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
+## Authors
 
+See the list of [contributors](../../graphs/contributors) who participated in this project.
 
-4. Deploy Function
+## License
 
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) file for details.
+
+## Resources
+
+For more information about Solace technology in general, please visit these resources:
+
+- The [Solace Developers website](https://www.solace.dev/)
+- [Solace Documentation](https://docs.solace.com/)
+- Understanding [Solace technology]( https://solace.com/products/tech/)
+- Ask the [Solace Community]( https://solace.community/)
