@@ -40,7 +40,7 @@ The Connector service, deployed in Cloud Run, is implemented in Python v3.9 in t
 
 The Google Pub/Sub Subscription is set to use [Push delivery](https://cloud.google.com/pubsub/docs/push) which immediately calls the REST trigger URL of the Connector service when a message becomes available that matches the subscription.
 
-It is recommended to deploy the Connector service in Google Run configured to "Require Authentication". This will use OAuth 2.0 between Pub/Sub and Run with authentication/authorization automatically handled within GCP.
+It is recommended to configure the Connector service configured to "Require Authentication" when deploying in Google Run. This will use OAuth 2.0 between Pub/Sub and Run with authentication/authorization automatically handled within GCP.
 
 > Important: If "Require Authentication" is set, the Google IAM Service Account used by the Subscription must include the role of `Cloud Run Invoker`.
 
@@ -91,7 +91,7 @@ Where:
 * `AuthScheme` defines the authentication scheme to use, see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
 * Additional fields are specific to the `AuthScheme`
 
-Secrets can be set and updated through Secret Manager and the Connector service will use the latest Secret configured.
+Secrets can be set and updated through Secret Manager and the Connector service will use the "latest" Secret configured.
 
 > Important: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
@@ -158,8 +158,12 @@ Using Client Certificate authentication no Authorization header is required in t
 
 #### OAuth 2.0 authentication
 
-Since the Connector service runs in GCP, this example will conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) and returns an JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service.
+Since the Connector service runs in GCP, this example will conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) which returns a JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service.
 
+The OAuth token will be conveyed in the Authorization header of the REST request, for example:
+```
+Authorization: Bearer eyJhbGciOiifQ.2MDIyOTkyNzA5MDYwMjU0MzQ5In0.iNI3rPN5sxPOWkSCLJJ1AOhUKwWQyI
+```
 The connection secret shall be provided as follows:
 ```json
 {
@@ -187,6 +191,7 @@ The recommended broker configuration is:
 * OAuth authentication enabled
 * OAuth profile defined as follows:
 * `OAuth Role` set as `Client`
+* Ensure that `OAuth Client ID` and `Audience` in the connection secret above are the same
 * `Issuer Identifier` set to `https://accounts.google.com`
 * `Discovery Endpoint`set `https://accounts.google.com/.well-known/openid-configuration`
 * `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used; or `email`, which is the Email setting of the same service account. The corresponding Client Username must then be configured in the broker
@@ -196,7 +201,10 @@ The recommended broker configuration is:
 ## Connector implementation
 
 
-## Quick start guide
+
+## Quick Start
+
+This example demonstrates an end-to-end scenario using Basic authentication.
 
 Pre-requisites
 - GCP project
