@@ -378,6 +378,8 @@ gcloud pubsub topics publish my-topic \
 
 ### Cloud Run logs
 
+It is recommended to first [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure to refresh to see the latest logs. If there is a failure the Subscription will keep re-delivering messages and it may be necessary to .go to the Pub/Sub Subscription details and purge messages to stop that.
+
 ### Connector local testing
 
 While the connector code  is ready for deployment into Cloud Run, it can be also tested by running locally in a Python 3.9 or later environment:
