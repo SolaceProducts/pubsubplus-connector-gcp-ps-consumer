@@ -2,6 +2,31 @@
 
 This guide provides an example use of the Solace PubSub+ REST API to stream events from Google Pub/Sub to Solace PubSub+.
 
+Contents:
+  * [Introduction](#introduction)
+  * [Assumptions](#assumptions)
+  * [Solution overview](#solution-overview)
+  * [Components and interactions](#components-and-interactions)
+    + [Connector service in GCP Cloud Run](#connector-service-in-gcp-cloud-run)
+    + [GCP Pub/Sub Push delivery](#gcp-pub-sub-push-delivery)
+    + [PubSub+ Event Broker REST API for inbound messaging](#pubsub-event-broker-rest-api-for-inbound-messaging)
+    + [Pub/Sub message contents to PubSub+ message mapping](#pub-sub-message-contents-to-pubsub-message-mapping)
+    + [Solace PubSub+ Connection details as GCP Secret](#solace-pubsub-connection-details-as-gcp-secret)
+    + [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication)
+      - [Basic authentication](#basic-authentication)
+      - [Client Certificate authentication](#client-certificate-authentication)
+      - [OAuth 2.0 authentication](#oauth-20-authentication)
+  * [Connector implementation](#connector-implementation)
+  * [Quick Start](#quick-start)
+  * [Troubleshooting](#troubleshooting)
+    + [Cloud Run logs](#cloud-run-logs)
+    + [Connector local testing](#connector-local-testing)
+  * [Contributing](#contributing)
+  * [Authors](#authors)
+  * [License](#license)
+  * [Resources](#resources)
+
+
 ## Introduction
 
 From the [many options to connect](https://www.solace.dev/), a growing number of third party and cloud-native applications choose the Solace PubSub+ _REST API_ to stream events into the [PubSub+ event mesh](https://solace.com/solutions/initiative/event-mesh/). PubSub+ offers a flexible inbound REST interface and this guide shows how to make use of it at the example of publishing events from [Google Cloud Platform (GCP) Pub/Sub service](https://cloud.google.com/pubsub/docs/overview) to Solace PubSub+.
@@ -26,7 +51,7 @@ The following diagram depicts the main components of the solution.
 
 _Cloud Pub/Sub_, _Cloud Run_ and _Secret Manager_ are GCP services running in Google Cloud. _Solace PubSub+_ is shown here accessible through a public REST API service. PubSub+ may be a single event broker in HA or non-HA deployment or part of a larger PubSub+ Event Mesh.
 
-Given an existing _Topic_ configured in Cloud Pub/Sub, a _Subscription_ is created to this topic which triggers the _Connector logic_ deployed in Cloud Run. The Connector (1) checks the received Pub/Sub message, (2) gets _Solace PubSub+ broker connection details_ that have been configured as a secret in Secret Manager, (3) constructs an HTTP REST Request, message body and headers also taking into account the configured _Authentication method_ at PubSub+, and (4) sends the Request to PubSub+ using the REST API. The REST API Response indicates the success of getting the message into PubSub+.
+Given an existing _Topic_ configured in Cloud Pub/Sub, a _Subscription_ is created to this topic which triggers the _Connector logic_ deployed in Cloud Run. The Connector (1) checks the received Pub/Sub message, (2) gets _Solace PubSub+ broker connection details_ that have been configured as a secret in Secret Manager, (3) constructs an HTTP REST Request, message body and headers by mapping information from the received Pub/Sub message contents and taking into account the configured _Authentication method_ at PubSub+, and (4) sends the Request to PubSub+ using the REST API. The REST API Response indicates the success of getting the message into PubSub+.
 
 Messages published to the Google Pub/Sub Topic will now be delivered to the PubSub+ Event Broker and available for consumption by any of its [supported APIs](https://solace.com/products/apis-protocols/) from any point of the Event Mesh.
 
@@ -220,17 +245,11 @@ The Connector is essentially a REST server leveraging the Python Flask web frame
 
 Processing is straightforward:
 1. Received request is expected as a Pub/Sub message and checked for valid JSON format and to include valid contents, then payload is extracted
-1. Outgoing PubSub+ REST message HTTP headers are prepared by appropriate mapping from Pub/Sub message metadata - see section [Pub/Sub message contents to PubSub+ message mapping](#pubsub-event-broker-rest-api-for-inbound-messaging) in this guide.
+1. Outgoing PubSub+ REST message HTTP headers are prepared by appropriate mapping from Pub/Sub message metadata - see section [Pub/Sub message contents to PubSub+ message mapping](#pubsub-message-contents-to-pubsub-message-mapping) in this guide.
 1. The `get_conn_config()` function is defined to get and return the contents of the [connection secret](#solace-pubsub-connection-details-as-gcp-secret) injected as `SOLACE_BROKER_CONNECTION` environment variable
 1. Authentication info is prepared depending on the authentication scheme obtained from the secret: for example an `Authentication` header may be added
 1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the PubSub+ message. This sample will send it to a PubSub+ event topic that includes the name of the PubSub subscription: `/gcp/pubsub/{subscription}`
 1. REST response from PubSub+ is obtained and returned as the overall result of the processing
-
-#### Connector Local testing
-
-While it is ready for deployment into Cloud Run, the connector code can be also tested by running locally with Python 3.9 installed.
-
-
 
 ## Quick Start
 
@@ -342,6 +361,45 @@ gcloud pubsub topics publish topic-with-avro-schema \
 Client Certificate authentication
 
 Follow https://docs.solace.com/Cloud/ght_client_certs.htm
+
+## Troubleshooting
+
+### Cloud Run logs
+
+### Connector local testing
+
+While the connector code  is ready for deployment into Cloud Run, it can be also tested by running locally in a Python 3.9 or later environment:
+
+```bash
+# From project root
+cd python-samples/run/gcp-pubsub-to-solace-pubsubplus
+SOLACE_BROKER_CONNECTION="{ "Host": "https://myhost:9443", "AuthScheme": "basic", "Username": "user", "Password": "pass" }" \
+  bash -c "python main.py"
+```
+This will set the SOLACE_BROKER_CONNECTION env variable, which is otherwise taken from the GCP Secret, and start the Connector service listening at `127.0.0.1:8080`. (You may need to adjust above command to your OS environment)
+
+Use a REST client tool such as Curl or Postman to emulate a trigger message from Pub/Sub and verify the request makes it to your PubSub+ event broker.
+
+```
+POST http://127.0.0.1:8080
+{
+  "message": {
+    "attributes": {
+      "AA": "BB",
+      "CC": "DD",
+      "EE": "FF",
+      "googclient_schemaencoding": "JSON"
+    },
+    "data": "eyJTdHJpbmdGaWVsZCI6ICJTaGluZSBUZXN0IiwgIkZsb2F0RmllbGQiOiAyLjE0MTUsICJCb29sZWFuRmllbGQiOiBmYWxzZX0=",
+    "messageId": "3470081450253332",
+    "message_id": "3470081450253332",
+    "orderingKey": "QWERTY",
+    "publishTime": "2021-12-02T20:20:53.37Z",
+    "publish_time": "2021-12-02T20:20:53.37Z"
+  },
+  "subscription": "projects/my-gcp-project-1234/subscriptions/mytopic-run-sub"
+}
+```
 
 
 ## Contributing
