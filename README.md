@@ -121,12 +121,12 @@ The sample Connector will map information from this JSON object to PubSub+ REST 
 | `subscription` | User Property Map of type String, key `google_pubsub_subscription` (full `subscription` string) |
 || Key `google_pubsub_project` (extracted from `projects` as part of `subscription`), example: `my-gcp-project-1234` |
 || Key `google_pubsub_subscriptionname` (extracted from `subscriptions` as part of `subscription`), example `my-topic-run-sub` |
-|| Destination, created from subscription (in this example): PubSub+ topic `/gcp/pubsub/my-topic-run-sub`
+|| Destination, created from subscription (in this example): PubSub+ topic `gcp/pubsub/my-topic-run-sub`
 
 This an example of the resulting PubSub+ message dump:
 ```
 ^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Destination:                            Topic '/gcp/pubsub/my-topic-run-sub'
+Destination:                            Topic 'gcp/pubsub/my-topic-run-sub'
 ApplicationMessageId:                   12345
 HTTP Content Type:                      application/json
 HTTP Content Encoding:                  UTF-8
@@ -275,7 +275,7 @@ Processing is straightforward:
 1. Outgoing PubSub+ REST message HTTP headers are prepared by appropriate mapping from Pub/Sub message metadata - see section [Pub/Sub message contents to PubSub+ message mapping](#pubsub-message-contents-to-pubsub-message-mapping) in this guide.
 1. The `get_conn_config()` function is defined to get and return the contents of the [connection secret](#solace-pubsub-connection-details-as-gcp-secret) injected as `SOLACE_BROKER_CONNECTION` environment variable
 1. Authentication info is prepared depending on the authentication scheme obtained from the secret: for example an `Authentication` header may be added
-1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the PubSub+ message. This sample will send it to a PubSub+ event topic that includes the name of the PubSub subscription: `/gcp/pubsub/{subscription}`
+1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the PubSub+ message. This sample will send it to a PubSub+ event topic that includes the name of the PubSub subscription: `gcp/pubsub/{subscription}`
 1. REST response from PubSub+ is obtained and returned as the overall result of the processing
 
 ## Quick Start
@@ -327,7 +327,7 @@ Run following in a shell, replacing `<PROJECT_ID>` and `<REGION>` from your GCP 
 export GOOGLE_CLOUD_PROJECT=<PROJECT_ID>
 export GOOGLE_CLOUD_REGION=<REGION>
 # Get source from the GitHub repo
-git clone https://github.com/SolaceDev/pubsubplus-connector-gcp-ps-consumer.git
+git clone https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer.git
 cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus/
 # Submit a build to GCP Container Registry using Google Cloud Build
 gcloud builds submit --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer
@@ -362,7 +362,7 @@ To watch messages arriving into PubSub+, use the "Try Me!" test service of the b
    * If you are using PubSub+ Cloud for your messaging service, follow the instructions in [Trying Out Your Messaging Service](https://docs.solace.com/Solace-Cloud/ggs_tryme.htm). Hint: you may need to fix the "Establish Connection" details (Broker URL port shall be 443, manually copy Client Username and Password from the "Cluster Manager" "Connect" info)
    * If you are using an existing event broker, log into its [PubSub+ Manager admin console](//docs.solace.com/Solace-PubSub-Manager/PubSub-Manager-Overview.htm#mc-main-content) and follow the instructions in [How to Send and Receive Test Messages](https://docs.solace.com/Solace-PubSub-Manager/PubSub-Manager-Overview.htm#Test-Messages).
 
-In both cases ensure to set the subscription to `/gcp/pubsub/>`, which is a wildcard subscription to anything starting with `/gcp/pubsub/` and shall catch what the connector is publishing to.
+In both cases ensure to set the subscription to `gcp/pubsub/>`, which is a wildcard subscription to anything starting with `gcp/pubsub/` and shall catch what the connector is publishing to.
 
 Then publish a message to Google Pub/Sub `my-topic`, from [GCP Console](https://cloud.google.com/pubsub/docs/publisher#publishing_messages) or using the command line:
 ```

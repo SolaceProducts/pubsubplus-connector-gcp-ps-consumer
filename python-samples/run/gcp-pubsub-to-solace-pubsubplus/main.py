@@ -18,8 +18,8 @@
 
 # Adjust to set PubSub+ broker destination
 SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
-SOLACE_DESTINATION_NAME = "/gcp/pubsub"  # The broker destination topic or queue name (queue must exist on the broker)
-SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME = True # Append subscription name to above destination, e.g.: /gcp/pubsub/my-subscription
+SOLACE_DESTINATION_NAME = "gcp/pubsub"  # The broker destination topic or queue name (queue must exist on the broker)
+SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME = True # Append subscription name to above destination, e.g.: gcp/pubsub/my-subscription
 
 import http.client
 import requests
