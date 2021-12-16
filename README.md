@@ -39,10 +39,6 @@ This guide assumes basic understanding of:
 * Google Cloud Platform (GCP) [Cloud Pub/Sub](https://cloud.google.com/pubsub), [Cloud Run](https://cloud.google.com/run) and [Secret Manager](https://cloud.google.com/secret-manager) services
 * Python programming language
 
-It is also assumed you have access to:
-* Solace PubSub+ Event Broker, or [signed up for a free PubSub+ Cloud account](https://docs.solace.com/Cloud/ggs_login.htm)
-* GCP with appropriate admin rights, or [signed up for a free GCP account](https://console.cloud.google.com/freetrial/signup)
-
 ## Solution overview
 
 The following diagram depicts the main components of the solution.
@@ -51,7 +47,7 @@ The following diagram depicts the main components of the solution.
 
 _Cloud Pub/Sub_, _Cloud Run_ and _Secret Manager_ are GCP services running in Google Cloud. _Solace PubSub+_ is shown here accessible through a public REST API service. PubSub+ may be a single event broker in HA or non-HA deployment or part of a larger PubSub+ Event Mesh.
 
-Given an existing _Topic_ configured in Cloud Pub/Sub, a _Subscription_ is created to this topic which triggers the _Connector logic_ deployed in Cloud Run. The Connector (1) checks the received Pub/Sub message, (2) gets _Solace PubSub+ broker connection details_ that have been configured as a secret in Secret Manager, (3) constructs an HTTP REST Request, message body and headers by mapping information from the received Pub/Sub message contents and taking into account the configured _Authentication method_ at PubSub+, and (4) sends the Request to PubSub+ using the REST API. The REST API Response indicates the success of getting the message into PubSub+.
+Given an existing _Topic_ configured in Cloud Pub/Sub, a _Subscription_ is created to this topic which triggers the _Connector logic_ deployed as a service in Cloud Run. The Connector (1) checks the received Pub/Sub message, (2) gets _Solace PubSub+ broker connection details_ that have been configured as a secret in Secret Manager, (3) constructs an HTTP REST Request, message body and headers by mapping information from the received Pub/Sub message contents and taking into account the configured _Authentication method_ at PubSub+, and (4) sends the Request to PubSub+ using the REST API. The REST API Response indicates the success of getting the message into PubSub+.
 
 Messages published to the Google Pub/Sub Topic will now be delivered to the PubSub+ Event Broker and available for consumption by any of its [supported APIs](https://solace.com/products/apis-protocols/) from any point of the Event Mesh.
 
@@ -101,17 +97,16 @@ The received Pub/Sub message becomes available to the Connector service as a JSO
       "EE": "FF",
       "googclient_schemaencoding": "JSON"
     },
-    "data": "eyJTdHJpbmdGaWVsZCI6ICCb29sZWFuRmllbGQiOiBmYWxzZX0=",
+    "data": "eyJTdHJpbmdGaWVsZCI6ICCb29s...ZWFuRmllbGQiOiBmYWxzZX0=",
     "messageId": "12345",
     "message_id": "12345",
     "orderingKey": "QWERTY",
     "publishTime": "2021-12-02T20:20:53.37Z",
     "publish_time": "2021-12-02T20:20:53.37Z"
   },
-  "subscription": "projects/my-gcp-project-1234/subscriptions/mytopic-run-sub"
+  "subscription": "projects/my-gcp-project-1234/subscriptions/my-topic-run-sub"
 }
 ```
-
 > Note: it seems that the Pub/Sub "topic" is not available from the JSON object, only the subscription.
 
 The sample Connector will map information from this JSON object to PubSub+ REST API Request parameters (see previous section) so when ingested into PubSub+ the following PubSub+ message is created:
@@ -123,10 +118,42 @@ The sample Connector will map information from this JSON object to PubSub+ REST 
 | `message.messageId` | Message ID |
 | `message.orderingKey` (if present) | User Property Map of type String |
 | `message.publishTime` (RFC3339 encoded) | Timestamp (milliseconds since Epoch) |
-| `subscription` | User Property Map of type String, key `google_pubsub_subscriptionid` (full `subscription` string) |
+| `subscription` | User Property Map of type String, key `google_pubsub_subscription` (full `subscription` string) |
 || Key `google_pubsub_project` (extracted from `projects` as part of `subscription`), example: `my-gcp-project-1234` |
-|| Key `google_pubsub_subscription` (extracted from `subscriptions` as part of `subscription`), example `mytopic-run-sub` |
-|| Destination, created from subscription (in this example): PubSub+ topic `/gcp/pubsub/mytopic-run-sub`
+|| Key `google_pubsub_subscriptionname` (extracted from `subscriptions` as part of `subscription`), example `my-topic-run-sub` |
+|| Destination, created from subscription (in this example): PubSub+ topic `/gcp/pubsub/my-topic-run-sub`
+
+This an example of the resulting PubSub+ message dump:
+```
+^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Destination:                            Topic '/gcp/pubsub/my-topic-run-sub'
+ApplicationMessageId:                   12345
+HTTP Content Type:                      application/json
+HTTP Content Encoding:                  UTF-8
+SenderTimestamp:                        1638476453370 (Thu Dec 02 2021 15:20:53)
+Class Of Service:                       COS_1
+DeliveryMode:                           DIRECT
+Message Id:                             1
+TimeToLive:                             604800000
+DMQ Eligible
+User Property Map:
+  Key 'google_pubsub_subscription' (STRING) projects/my-gcp-project-1234/subscriptions/my-topic-run-sub
+  Key 'google_pubsub_project' (STRING) my-gcp-project-1234
+  Key 'google_pubsub_subscriptionname' (STRING) my-topic-run-sub
+  Key 'orderingKey' (STRING) QWERTY
+  Key 'AA' (STRING) BB
+  Key 'CC' (STRING) DD
+  Key 'EE' (STRING) FF
+  Key 'googclient_schemaencoding' (STRING) JSON
+Binary Attachment:                      len=74
+  7b 22 53 74 72 69 6e 67  46 69 65 6c 64 22 3a 20      {"String   Field":
+  22 53 68 69 6e 65 20 54  65 73 74 22 2c 20 22 46      "Shine T   est", "F
+  6c 6f 61 74 46 69 65 6c  64 22 3a 20 32 2e 31 34      loatFiel   d": 2.14
+  31 35 2c 20 22 42 6f 6f  6c 65 61 6e 46 69 65 6c      15, "Boo   leanFiel
+  64 22 3a 20 66 61 6c 73  65 7d                        d": fals   e}
+
+^^^^^^^^^^^^^^^^^^ End Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+```
 
 ### Solace PubSub+ Connection details as GCP Secret
 
@@ -255,112 +282,97 @@ Processing is straightforward:
 
 This example demonstrates an end-to-end scenario using Basic authentication.
 
-Pre-requisites
-- GCP project
-- GCP Secrets Manager is [configured](https://cloud.google.com/secret-manager/docs/configuring-secret-manager)
-- Create a service account
+**Step 1: Access to Google Cloud and PubSub+ services**
+
+Get access to:
+* Solace PubSub+ Event Broker, or [sign up for a free PubSub+ Cloud account](https://docs.solace.com/Cloud/ggs_login.htm). Note that the broker must have TLS configured (comes automatically when using ).
+* GCP or [sign up for a free GCP account](https://console.cloud.google.com/freetrial/signup). Add appropriate permissions to your user if you encounter any restrictions to perform the next administration tasks. For development purposes the simplest option is if you user has account "Owner" or "Editor" rights.
+
+[Enable GCP services](https://cloud.google.com/service-usage/docs/enable-disable), including "IAM", "Pub/Sub", "Secret Manger", "Cloud Run" and its dependency, the "Container Registry".
+
+[Install Google Cloud SDK](https://cloud.google.com/sdk/docs/install#managing_an_installation) and [initialize it](https://cloud.google.com/sdk/docs/initializing).
+
+**Step 2: Setup prerequisites**
+
+Create followings in GCP:
+* A [Pub/Sub topic](https://cloud.google.com/pubsub/docs/quickstart-console#create_a_topic) `my-topic` for which messages will be forwarded to Solace PubSub+.
+* [IAM Service Account(s)](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) - a common SA with both roles would suffice, separate SAs are recommended for better security:
+  * SA to be used by Pub/Sub Subscription, with role `Cloud Run Invoker`; and
+  * SA for the Connector service in Cloud Run, with role `Secret Manager Secret Accessor`
+
+For simplicity we will only create one SA `pubsub-solace-producer-run-sa` in this quickstart with both roles.
+
+> Note: it may take several minutes for the service accounts and roles to become active.
+
+**Step 3: Create a Secret with PubSub+ connection details**
+
+[Create a secret](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create) in Secret Manager providing a name `my-solace-rest-connection-secret` and following value (replace Host, Username and Password with your [PubSub+ event broker's REST connection details](https://docs.solace.com/Cloud/ggs_create_first_service.htm#find-service-details)):
+```json
+{
+  "Host": "https://myhost:9443",
+  "AuthScheme": "basic",
+  "Username": "myuser",
+  "Password": "mypass"
+}
 ```
-gcloud iam service-accounts create pubsub-solace-producer-run-sa
-gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} \
-     --member="serviceAccount:pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com" \
-     --role="roles/run.invoker" \
-     --role="roles/secretmanager.secretAccessor"
-```
 
-1. Get a PubSub+ broker
+**Step 4: Deploy the Connector in Cloud Run and link it to the Secret**
 
-* Easiest from Solace Cloud
-* Obtain connection details
+This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account from Step 2 and the created secret from Step 3 assigned.
 
-2. Provision connection details in GCP Secret Manager
+Run following in a shell, replacing `<PROJECT_ID>` and `<REGION>` from your GCP project.
 
-Replace username, password and host details as required:
 ```bash
-echo '{ "Username": "myuser", "Password": "mypass", "Host": "https://myhost:9443" }' \
-    > my-solace-rest-connection.txt
-gcloud secrets create my-solace-rest-connection-secret \
-    --data-file="./my-solace-rest-connection.txt"
-```
-
-3. Deploy the adapter code in GCP Run
-
-Build and submit container image, then deploy.
-
-```
-git clone https://github.com/SolaceDev/pubsubplus-connector-gcp-ps-consumer.git
-cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus/
-# provide <PROJECT_ID> and <REGION>
+# TODO: provide <PROJECT_ID> and <REGION>
 export GOOGLE_CLOUD_PROJECT=<PROJECT_ID>
 export GOOGLE_CLOUD_REGION=<REGION>
-# Submit a build using Google Cloud Build
+# Get source from the GitHub repo
+git clone https://github.com/SolaceDev/pubsubplus-connector-gcp-ps-consumer.git
+cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus/
+# Submit a build to GCP Container Registry using Google Cloud Build
 gcloud builds submit --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer
 # Deploy to Cloud Run
-gcloud run deploy pubsub-solace-producer \
+gcloud run deploy gcp-solace-connector-service \
     --image gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer \
     --no-allow-unauthenticated \
     --platform managed \
     --region ${GOOGLE_CLOUD_REGION} \
-    --service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com
-gcloud run services update pubsub-solace-producer \
-    --set-secrets=SOLACE_BROKER_CONNECTION=my-solace-rest-connection-secret:latest \
-    --platform managed \
-    --region ${GOOGLE_CLOUD_REGION}
-
-# With client cert auth
-gcloud run deploy pubsub-solace-producer \
-    --image gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer \
-    --no-allow-unauthenticated \
-    --platform managed \
-    --region ${GOOGLE_CLOUD_REGION} \
-    --service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com
-gcloud run services update pubsub-solace-producer \
-    --set-secrets=SOLACE_BROKER_CONNECTION=my-solace-rest-connection-secret:latest \
-    --platform managed \
-    --region ${GOOGLE_CLOUD_REGION}
-
+    --service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com \
+    --set-secrets=SOLACE_BROKER_CONNECTION=my-solace-rest-connection-secret:latest
 ```
 
-4. Create topic in GCP Pub/Sub
+Notice the Connector service trigger URL printed on the console after the deployment has been created.
 
-Note: if you encounter policy constraints, refer to https://cloud.google.com/pubsub/docs/admin#organization_policy
+**Step 5: Create a push Subscription to the Topic and link it to the Connector**
 
-```bash
-gcloud pubsub schemas create test-avro-schema \
-        --type=AVRO \
-        -- definition='{"type":"record","name":"Avro","fields":[{"name":"StringField","type":"string"},{"name":"FloatField","type":"float"},{"name":"BooleanField","type":"boolean"}]}'
-gcloud pubsub topics create topic-with-avro-schema \
-        --message-encoding=JSON \
-        --schema=test-avro-schema
+Follow the [instructions to create a Subscription](https://cloud.google.com/pubsub/docs/admin#creating_subscriptions), provide:
+* Pub/Sub topic name `my-topic` which has been created in Step 2
+* Subscription name, for example `my-topic-run-sub`
+* Select "Push" delivery type
+* Set the Endpoint URL to the Connector service trigger URL from Step 4 (if needed you can look it up running `gcloud run services list`)
+* Set checkbox to Enable Authentication
+* Set the service account to `pubsub-solace-producer-run-sa`
+
+With this the Subscription becomes active and the system is ready for testing!
+
+**Step 6: Testing**
+
+To watch messages arriving into PubSub+, use the "Try Me!" test service of the browser-based administration console to subscribe to messages to the `sinktest` topic. Behind the scenes, "Try Me!" uses the JavaScript WebSocket API.
+
+   * If you are using PubSub+ Cloud for your messaging service, follow the instructions in [Trying Out Your Messaging Service](https://docs.solace.com/Solace-Cloud/ggs_tryme.htm). Hint: you may need to fix the "Establish Connection" details (Broker URL port shall be 443, manually copy Client Username and Password from the "Cluster Manager" "Connect" info)
+   * If you are using an existing event broker, log into its [PubSub+ Manager admin console](//docs.solace.com/Solace-PubSub-Manager/PubSub-Manager-Overview.htm#mc-main-content) and follow the instructions in [How to Send and Receive Test Messages](https://docs.solace.com/Solace-PubSub-Manager/PubSub-Manager-Overview.htm#Test-Messages).
+
+In both cases ensure to set the subscription to `/gcp/pubsub/>`, which is a wildcard subscription to anything starting with `/gcp/pubsub/` and shall catch what the connector is publishing to.
+
+Then publish a message to Google Pub/Sub `my-topic`, from [GCP Console](https://cloud.google.com/pubsub/docs/publisher#publishing_messages) or using the command line:
 ```
-
-3. Create Subscription in GCP
-
+gcloud pubsub topics publish my-topic \
+    --message="Hello World!" --attribute=KEY1=VAL1,KEY2=VAL2
 ```
-# Determine the run service endpoint
-gcloud run services list
-gcloud pubsub subscriptions create topic-with-avro-schema-run-sub \
-    --topic=topic-with-avro-schema \
-    --push-endpoint=https://pubsub-solace-producer-imlb6ykhsq-ue.a.run.app \
-    --push-auth-service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com
+... and watch the message arriving in PubSub+
 
-gcloud pubsub subscriptions create topic-binary-with-avro-schema-run-sub \
-    --topic=topic-binary-with-avro-schema \
-    --push-endpoint=https://pubsub-solace-producer-imlb6ykhsq-ue.a.run.app \
-    --push-auth-service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com
 
-```
 
-5. Send message to Pub/Sub
-
-```
-gcloud pubsub topics publish topic-with-avro-schema \
-    --message='{"StringField": "Shine Test", "FloatField": 2.1415, "BooleanField": false}'
-```
-
----------------------
-Client Certificate authentication
-
-Follow https://docs.solace.com/Cloud/ght_client_certs.htm
 
 ## Troubleshooting
 
@@ -376,7 +388,7 @@ cd python-samples/run/gcp-pubsub-to-solace-pubsubplus
 SOLACE_BROKER_CONNECTION="{ "Host": "https://myhost:9443", "AuthScheme": "basic", "Username": "user", "Password": "pass" }" \
   bash -c "python main.py"
 ```
-This will set the SOLACE_BROKER_CONNECTION env variable, which is otherwise taken from the GCP Secret, and start the Connector service listening at `127.0.0.1:8080`. (You may need to adjust above command to your OS environment)
+This will set the SOLACE_BROKER_CONNECTION environmant variable, which is otherwise taken from the GCP Secret, and start the Connector service listening at `127.0.0.1:8080`. (You may need to adjust above command to your OS environment)
 
 Use a REST client tool such as Curl or Postman to emulate a trigger message from Pub/Sub and verify the request makes it to your PubSub+ event broker.
 
@@ -397,7 +409,7 @@ POST http://127.0.0.1:8080
     "publishTime": "2021-12-02T20:20:53.37Z",
     "publish_time": "2021-12-02T20:20:53.37Z"
   },
-  "subscription": "projects/my-gcp-project-1234/subscriptions/mytopic-run-sub"
+  "subscription": "projects/my-gcp-project-1234/subscriptions/my-topic-run-sub"
 }
 ```
 
