@@ -163,6 +163,7 @@ We will be using a simple flat JSON structure for the connection details:
 ```json
 {
   "Host": "https://myhost:9443",
+  "ServerCA": "-----BEGIN CERTIFICATE-----\n+etc\n+etc\n+etc\n-----END CERTIFICATE-----",
   "AuthScheme": "basic",
   :
   "field": "value",
@@ -171,8 +172,9 @@ We will be using a simple flat JSON structure for the connection details:
 ```
 Where:
 * `Host` provides the event broker REST service endpoint IP or FQDN including the port. Transport must be secure, using HTTPS
-* `AuthScheme` defines the authentication scheme to use, see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
-* Additional fields are specific to the `AuthScheme`
+* Optional `ServerCA`: if provided it will be used to trust the specified Certificate Authority when connecting to the PubSub+ REST server, useful for self-signed server certificates
+* `AuthScheme` defines the authentication scheme to use, for details see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
+* Additional fields are specific to the `AuthScheme` used
 
 Secrets can be set and updated through Secret Manager and the Connector service will use the "latest" Secret configured.
 
@@ -209,7 +211,7 @@ Here the Username is derived from the Common Name (CN) used in the TLS Client Ce
 
 Refer to a [step-by-step configuration guide for PubSub+ Cloud](https://docs.solace.com/Cloud/ght_client_certs.htm?Highlight=Client%20Certificate%20authentication) or the [detailed general configuration guide in Solace documentation](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Client-Cert). 
 
-The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that line breaks have been replaced by `\n` or as another option it is also acceptable to simply remove them:
+The connection secret shall contain the Client Certificate, along with the Client Key, as in the following sample. Notice that line breaks have been replaced by `\n`:
 ```json
 {
   "Host": "https:/myhost:9443",
@@ -378,7 +380,7 @@ gcloud pubsub topics publish my-topic \
 
 ### Cloud Run logs
 
-It is recommended to first [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure to refresh to see the latest logs. If there is a failure the Subscription will keep re-delivering messages and it may be necessary to .go to the Pub/Sub Subscription details and purge messages to stop that.
+It is recommended to first [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure to refresh to see the latest logs. If there is a failure the Subscription will keep re-delivering messages and it may be necessary to go to the Pub/Sub Subscription details and purge messages to stop that.
 
 ### Connector local testing
 

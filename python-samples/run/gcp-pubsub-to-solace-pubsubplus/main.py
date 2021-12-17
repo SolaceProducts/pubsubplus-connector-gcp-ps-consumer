@@ -15,11 +15,7 @@
 # limitations under the License.
 
 # Module contains a sample implementation of a connctor that forwards messages form GCP Pub/Sub to Solace PubSub+
-
-# Adjust to set PubSub+ broker destination
-SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
-SOLACE_DESTINATION_NAME = "gcp/pubsub"  # The broker destination topic or queue name (queue must exist on the broker)
-SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME = True # Append subscription name to above destination, e.g.: gcp/pubsub/my-subscription
+# See below for user modifiable VARIABLES
 
 import http.client
 import requests
@@ -29,6 +25,15 @@ import json
 from google.api_core.datetime_helpers import to_milliseconds, from_rfc3339
 from flask import Flask, request
 import ssl
+import logging
+import sys
+
+logging.basicConfig(level=logging.DEBUG)
+
+# Adjust to set PubSub+ broker destination
+SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
+SOLACE_DESTINATION_NAME = "gcp/pubsub"  # The broker destination topic or queue name (queue must exist on the broker)
+SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME = True # Append subscription name to above destination, e.g.: gcp/pubsub/my-subscription
 
 app = Flask(__name__)
 # Handle trigger from Pub/Sub subscription
@@ -39,26 +44,26 @@ def index():
   #
 
   # Verify Pub/Sub message contents
-  #print(f"Received request: {request}")
+  logging.debug(f"Received request: {request}")
   envelope = request.get_json()
   if not envelope:
     msg = "no Pub/Sub message received"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}")
     return f"Bad Request: {msg}", 400
-  #print(f"Envelope: {envelope}")
+  logging.debug(f"Envelope: {envelope}")
 
   if not isinstance(envelope, dict) or "message" not in envelope:
     msg = "invalid Pub/Sub message format"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}")
     return f"Bad Request: {msg}", 400
   pubsub_message = envelope["message"]
 
   if not isinstance(pubsub_message, dict) or "data" not in pubsub_message:
     msg = "no payload in Pub/Sub message"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}")
     return f"Bad Request: {msg}", 400
   payload = base64.b64decode(pubsub_message["data"]).decode("utf-8").strip()
-  print(f"Decoded Pub/Sub payload: {payload}")
+  logging.debug(f"Decoded Pub/Sub payload: {payload}")
 
   #
   # Format and forward message to Solace PubSub+
@@ -98,7 +103,7 @@ def index():
         headers[f"Solace-User-Property-{key}"] = attributes[key]
   except:
     msg = "Error parsing Pub/Sub headers"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}")
     return f"Bad Request: {msg}", 400
 
   # Determine PubSub+ event broker connection details
@@ -110,13 +115,19 @@ def index():
   try:
     mysecret = get_conn_config()
     pubsubplus_connection = json.loads(mysecret)
+    # Prep host to use
     host = pubsubplus_connection["Host"]
     if "https://" in host:    # This sample requires TLS (HTTPS) used but removes https:// from the host if present
       host = host.split("https://")[1]
-    context = ssl.SSLContext(ssl.PROTOCOL_SSLv23) # Create SSL context for all cases
+    # Prep SSL context, load server CA if provided
+    if "ServerCA" in pubsubplus_connection:
+      ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cadata=pubsubplus_connection["ServerCA"])
+      logging.debug("Server CA loaded")
+    else:
+      ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
     # Prepare authentication info depending on the auth scheme
     auth_scheme = pubsubplus_connection["AuthScheme"]
-    print(f"Determined {auth_scheme} authentication scheme")
+    logging.debug(f"Determined {auth_scheme} authentication scheme")
     if auth_scheme == "basic":
       username = pubsubplus_connection["Username"]
       password = pubsubplus_connection["Password"]
@@ -128,7 +139,9 @@ def index():
       # Define the client certificate settings for https connection
       open("client.crt", "w").write(client_cert)  # must save, there is no way to pass a string to load_cert_chain() below
       open("client.key", "w").write(client_key)
-      context.load_cert_chain(certfile="client.crt", keyfile="client.key")
+      ssl_context.load_cert_chain(certfile="client.crt", keyfile="client.key")
+      os.remove("client.crt")
+      os.remove("client.key")
     elif auth_scheme == "oauth":
       # Get id-token from the Cloud Run metadata server
       audience = pubsubplus_connection["Audience"]
@@ -137,10 +150,11 @@ def index():
       # Add Authorization header
       headers["Authorization"] = f"Bearer {oauth_token}"
     else:
-      print(f"Found unsupported authentication scheme: {auth_scheme}")
+      logging.warning(f"Found unsupported authentication scheme: {auth_scheme}")
   except:
+    type, value, traceback = sys.exc_info()
     msg = "Error parsing PubSub+ event broker connection details from SOLACE_BROKER_CONNECTION env variable"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}, details: {type}, {value}")
     return f"Service Unavailable: {msg}", 503
 
   # Send REST message to PubSub+ event broker, get response and return that
@@ -149,15 +163,16 @@ def index():
     path = f"/{SOLACE_DESTINATION_TYPE}/{SOLACE_DESTINATION_NAME}"
     if SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME:
       path += f"/{subscription_name}"         # Add subscription_name to the topic
-    conn = http.client.HTTPSConnection(host, timeout=10, context = context )
-    print(f"Sending message to {path}")
+    conn = http.client.HTTPSConnection(host, timeout=10, context = ssl_context )
+    logging.debug(f"Sending message to {path}")
     conn.request("POST", path, payload, headers)
     response = conn.getresponse()
-    print(f"Got Solace PubSub+ response {response.status}")
+    logging.debug(f"Got Solace PubSub+ response {response.status}")
     return ("", response.status)
   except:
+    type, value, traceback = sys.exc_info()
     msg = "Error sending message to PubSub+ event event broker REST API"
-    print(f"error: {msg}")
+    logging.warning(f"error: {msg}, details: {type}, {value}")
     return f"Unexpected error: {msg}", 400
   finally:
     conn.close()
