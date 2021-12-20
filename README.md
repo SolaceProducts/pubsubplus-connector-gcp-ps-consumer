@@ -375,8 +375,7 @@ gcloud pubsub topics publish my-topic \
 ```
 ... and watch the message arriving in PubSub+
 
-
-
+![alt text](/images/testmsg-received.png "Message received")
 
 ## Troubleshooting
 
