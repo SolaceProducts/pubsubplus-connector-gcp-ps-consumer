@@ -75,7 +75,7 @@ PubSub+ REST API clients are called "REST publishing clients" or "REST producers
 
 > **Note**: This guide uses [REST messaging mode](https://docs.solace.com/Open-APIs-Protocols/REST-get-start.htm#When) from the Solace REST API.
 
-The following REST to PubSub+ message conversions apply:
+The following REST to Solace-specific HTTP message conversions apply:
 
 | REST protocol element | Solace Message | Additional Reference in Solace Documentation|
 |----------|:-------------:|------:|
@@ -113,7 +113,7 @@ The received Pub/Sub message becomes available to the Connector service as a JSO
 ```
 > **Note**: A Pub/Sub "topic" is not available from the JSON object, only the subscription.
 
-The sample Connector maps information from this JSON object to PubSub+ REST API Request parameters (see the previous section) so when ingested into PubSub+, the following PubSub+ message is created:
+The sample Connector maps information from this JSON object to PubSub+ REST API Request parameters (see the previous section) so when ingested into PubSub+, the following Solace message is created:
 
 | Pub/Sub JSON field | Solace Message Element |
 |------------------|-------------|
@@ -127,7 +127,7 @@ The sample Connector maps information from this JSON object to PubSub+ REST API 
 || Key `google_pubsub_subscriptionname` (extracted from `subscriptions` as part of `subscription`), example `my-topic-run-sub` |
 || Destination, created from subscription (in this example): PubSub+ topic `gcp/pubsub/my-topic-run-sub`
 
-This an example of the resulting PubSub+ message dump:
+This an example of the resulting Solace message dump:
 ```
 ^^^^^^^^^^^^^^^^^^ Start Message ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Destination:                            Topic 'gcp/pubsub/my-topic-run-sub'
