@@ -28,7 +28,7 @@ import ssl
 import logging
 import sys
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Adjust to set PubSub+ broker destination
 SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
@@ -168,7 +168,8 @@ def index():
     if SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME:
       path += f"/{subscription_name}"         # Add subscription_name to the topic
     conn = http.client.HTTPSConnection(host, timeout=10, context = ssl_context )
-    logging.debug(f"Sending message to {path}")
+    logging.debug(f"Headers: {headers}")
+    logging.info(f"Sending message to {path}")
     conn.request("POST", path, payload, headers)
     response = conn.getresponse()
     logging.debug(f"Got Solace PubSub+ response {response.status}")
