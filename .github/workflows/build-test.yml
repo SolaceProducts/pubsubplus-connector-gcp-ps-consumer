@@ -30,7 +30,7 @@ jobs:
         echo "TEST_SUBSCRIPTION=$TEST_PREFIX-subsciption" >> $GITHUB_ENV
         echo "TEST_SECRET=$TEST_PREFIX-rest-connection-secret" >> $GITHUB_ENV
         echo "TEST_RUN_SERVICE=$TEST_PREFIX-connector-service" >> $GITHUB_ENV
-        echo "TEST_IMAGE=gcr.io/${GOOGLE_CLOUD_PROJECT}/$TEST_PREFIX-connector" >> $GITHUB_ENV
+        echo "TEST_IMAGE=gcr.io/${GCP_PROJECT_ID}/$TEST_PREFIX-connector" >> $GITHUB_ENV
         echo "GOOGLE_CLOUD_REGION=us-east1" >> $GITHUB_ENV
 
     - name: Set up Cloud SDK
@@ -62,8 +62,8 @@ jobs:
     - name: Delete test resources (Cleanup)
       if: ${{ always() }}
       run: |
-        gcloud pubsub subscriptions delete $TEST_SUBSCRIPTION
-        gcloud pubsub topics delete $TEST_TOPIC
+        gcloud secrets delete $TEST_SECRET
         gcloud container images delete $TEST_IMAGE
         gcloud run services delete $TEST_RUN_SERVICE
-        gcloud secrets delete $TEST_SECRET
+        gcloud pubsub topics delete $TEST_TOPIC
+        gcloud pubsub subscriptions delete $TEST_SUBSCRIPTION
