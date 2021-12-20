@@ -4,23 +4,23 @@ This guide provides an example of how to use the Solace PubSub+ REST API to stre
 
 Contents:
   * [Introduction](#introduction)
-  * [Assumptions](#assumptions)
-  * [Solution overview](#solution-overview)
-  * [Components and interactions](#components-and-interactions)
-    + [Connector service in GCP Cloud Run](#connector-service-in-gcp-cloud-run)
-    + [GCP Pub/Sub Push delivery](#gcp-pub-sub-push-delivery)
-    + [PubSub+ Event Broker REST API for inbound messaging](#pubsub-event-broker-rest-api-for-inbound-messaging)
-    + [Pub/Sub message contents to PubSub+ message mapping](#pub-sub-message-contents-to-pubsub-message-mapping)
-    + [Solace PubSub+ Connection details as GCP Secret](#solace-pubsub-connection-details-as-gcp-secret)
-    + [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication)
-      - [Basic authentication](#basic-authentication)
-      - [Client Certificate authentication](#client-certificate-authentication)
-      - [OAuth 2.0 authentication](#oauth-20-authentication)
-  * [Connector implementation](#connector-implementation)
+  * [Prerequisites](#prerequisites)
+  * [Solution Overview](#solution-overview)
+  * [Components and Interactions](#components-and-interactions)
+    + [Connector Service in GCP Cloud Run](#connector-service-in-cloud-run)
+    + [GCP Pub/Sub Push Delivery](#gcp-pubsub-push-delivery)
+    + [PubSub+ Event Broker REST API for Inbound Messaging](#pubsub-event-broker-rest-api-for-inbound-messaging)
+    + [Pub/Sub message contents to Solace Message Mapping](#pubsub-message-contents-to-solace-message-mapping)
+    + [Solace PubSub+ Connection Details as GCP Secret](#solace-pubsub-connection-details-as-gcp-secret)
+    + [PubSub+ REST API Client Authentication](#pubsub-rest-api-client-authentication)
+      - [Basic Authentication](#basic-authentication)
+      - [Client Certificate Authentication](#client-certificate-authentication)
+      - [OAuth 2.0 Authentication](#oauth-2.0-authentication)
+  * [Connector Implementation](#connector-implementation)
   * [Quick Start](#quick-start)
   * [Troubleshooting](#troubleshooting)
-    + [Cloud Run logs](#cloud-run-logs)
-    + [Connector local testing](#connector-local-testing)
+    + [Cloud Run Logs](#cloud-run-logs)
+    + [Connector Local Testing](#connector-local-testing)
   * [Contributing](#contributing)
   * [Authors](#authors)
   * [License](#license)
@@ -31,15 +31,15 @@ Contents:
 
 From the [many options to connect](https://www.solace.dev/), a growing number of third-party and cloud-native applications choose the Solace PubSub+ _REST API_ to stream events into the [PubSub+ event mesh](https://solace.com/solutions/initiative/event-mesh/). PubSub+ offers a flexible, inbound REST interface. This guide shows you how to make use of it as an example of publishing events from [Google Cloud Platform (GCP) Pub/Sub service](https://cloud.google.com/pubsub/docs/overview) to Solace PubSub+.
 
-## Assumptions
+## Prerequisites
 
-This guide assumes that you have a basic understanding of:
+This guide presumes that you have a basic understanding of:
 
 * Solace PubSub+ event brokers [core messaging concepts](https://docs.solace.com/Basics/Core-Concepts.htm)
 * Google Cloud Platform (GCP) [Cloud Pub/Sub](https://cloud.google.com/pubsub), [Cloud Run](https://cloud.google.com/run), and [Secret Manager](https://cloud.google.com/secret-manager) services
 * Python programming language
 
-## Solution overview
+## Solution Overview
 
 The following diagram depicts the main components of the solution.
 
@@ -77,18 +77,18 @@ PubSub+ REST API clients are called "REST publishing clients" or "REST producers
 
 The following REST to PubSub+ message conversions apply:
 
-| REST protocol element | PubSub+ message | Additional Reference in Solace Documentation|
+| REST protocol element | Solace Message | Additional Reference in Solace Documentation|
 |----------|:-------------:|------:|
 | Request `host:port` | Maps to the PubSub+ `message-vpn` to be used for the message | [Solace PubSub+ Event Broker Message VPN Selection](https://docs.solace.com/RESTMessagingPrtl/Solace-Router-Interactions.htm#VPN-Selection)
 | Request path: `/QUEUE/queue-name` or `/TOPIC/topic-string`| PubSub+ Queue or Topic destination for the message | [REST HTTP Client to Solace Event Broker HTTP Server](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#Messagin) |
 | Authorization  HTTP header | May support client authentication depending on the authentication scheme used | [Client Authentication](https://docs.solace.com/RESTMessagingPrtl/Solace-Router-Interactions.htm#Client)
 | Content-Type HTTP header | Determines a `text` or `binary` message type. Becomes available as a message attribute. | [HTTP Content-Type Mapping to Solace Message Types](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Ref393980206)
 | Content-Encoding HTTP header | Must be `UTF-8` for  the `text` message type. Become available as a message attribute. | [HTTP Content-Type Mapping to Solace Message Types](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Ref393980206)
-| Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding PubSub+ message attribute or property | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
+| Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding Solace-specific message REST attribute or property | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
 | REST request body| The message body (application data) |
 | REST HTTP response | For persistent messages, the 200 OK is returned after the message has been successfully stored on the event broker, otherwise an error code | [HTTP Responses from Event Broker to REST HTTP Clients](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Status-Codes.htm#Producer-on-Post)
 
-### Pub/Sub Message contents to PubSub+ Message Mapping
+### Pub/Sub Message contents to Solace Message Mapping
 
 The received Pub/Sub message becomes available to the Connector service as a JSON object with following example message contents:
 
@@ -115,7 +115,7 @@ The received Pub/Sub message becomes available to the Connector service as a JSO
 
 The sample Connector maps information from this JSON object to PubSub+ REST API Request parameters (see the previous section) so when ingested into PubSub+, the following PubSub+ message is created:
 
-| Pub/Sub JSON field | PubSub+ message element |
+| Pub/Sub JSON field | Solace Message Element |
 |------------------|-------------|
 | `message.attributes` | User `Property Map` of type `String` for each attribute present, example: `Key 'AA' (STRING) BB` |
 | `message.data` |  Payload, base64-decoded from `message.data` |
@@ -278,17 +278,17 @@ The Connector is essentially a REST server leveraging the Python Flask web frame
 
 Processing is straightforward:
 1. Received request is expected as a Pub/Sub message and checked for valid JSON format and to include valid contents, then payload is extracted
-1. Outgoing PubSub+ REST message HTTP headers are prepared by appropriate mapping from Pub/Sub message metadata - see section [Pub/Sub message contents to PubSub+ message mapping](#pubsub-message-contents-to-pubsub-message-mapping) in this guide.
+1. Outgoing PubSub+ REST message HTTP headers are prepared by appropriate mapping from Pub/Sub message metadata - see section [Pub/Sub message contents to Solace Message Mapping](#pubsub-message-contents-to-solace-message-mapping) in this guide.
 1. The `get_conn_config()` function is defined to get and return the contents of the [connection secret](#solace-pubsub-connection-details-as-gcp-secret) injected as `SOLACE_BROKER_CONNECTION` environment variable
 1. Authentication info is prepared depending on the authentication scheme obtained from the secret: for example an `Authentication` header may be added
-1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the PubSub+ message. This sample sends the message to a PubSub+ event topic that includes the name of the PubSub subscription: `gcp/pubsub/{subscription}`
+1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the Solace message. This sample sends the Solace message to a PubSub+ event topic that includes the name of the subscription: `gcp/pubsub/{subscription}`
 1. REST response from PubSub+ is obtained and returned as the overall result of the processing
 
 ## Quick Start
 
 This example demonstrates an end-to-end scenario using Basic authentication.
 
-**Step 1: Access to Google Cloud and PubSub+ services**
+**Step 1: Access to Google Cloud and PubSub+ Event Broker Services**
 
 Get access to:
 * Solace PubSub+ Event Broker, or [sign up for a free PubSub+ Cloud account](https://docs.solace.com/Cloud/ggs_login.htm). Note that the broker must have TLS configured (comes automatically when using PubSub+ Cloud).
@@ -298,7 +298,7 @@ Get access to:
 
 [Install Google Cloud SDK](https://cloud.google.com/sdk/docs/install#managing_an_installation) and [initialize it](https://cloud.google.com/sdk/docs/initializing).
 
-**Step 2: Setup prerequisites**
+**Step 2: Setup Prerequisites**
 
 Create the following in GCP:
 * A [Pub/Sub topic](https://cloud.google.com/pubsub/docs/quickstart-console#create_a_topic) `my-topic` for which messages are  forwarded to a PubSub+ event broker.
@@ -310,7 +310,7 @@ For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this qu
 
 > **Note**: It may take several minutes for the service accounts and roles to become active.
 
-**Step 3: Create a Secret with PubSub+ connection details**
+**Step 3: Create a Secret with PubSub+ Connection Details**
 
 [Create a secret](https://cloud.google.com/secret-manager/docs/creating-and-accessing-secrets#create) in Secret Manager providing a name `my-solace-rest-connection-secret` and following value (replace Host, Username and Password with your [PubSub+ event broker's REST connection details](https://docs.solace.com/Cloud/ggs_create_first_service.htm#find-service-details)):
 ```json
@@ -324,7 +324,7 @@ For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this qu
 
 > **Note**: add `ServerCA` field if your server's certificate signing Certificate Authority is not a public provider, see [here](#solace-pubsub-connection-details-as-gcp-secret) for  more details.
 
-**Step 4: Deploy the Connector in Cloud Run and link it to the Secret**
+**Step 4: Deploy the Connector in Cloud Run and Link It to the Secret**
 
 This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account from Step 2 and the created secret from Step 3 assigned.
 
@@ -351,7 +351,7 @@ gcloud run deploy gcp-solace-connector-service \
 
 Notice the Connector service trigger URL printed on the console after the deployment has been created.
 
-**Step 5: Create a push Subscription to the Topic and link it to the Connector**
+**Step 5: Create a push Subscription to the Topic and Link It to the Connector**
 
 Follow the [instructions to create a Subscription](https://cloud.google.com/pubsub/docs/admin#creating_subscriptions), provide:
 * Subscription ID (name), for example `my-topic-run-sub`
