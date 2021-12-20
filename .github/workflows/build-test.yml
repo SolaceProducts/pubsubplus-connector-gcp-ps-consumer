@@ -1,0 +1,66 @@
+name: build-test
+
+on:
+  push:
+
+  # schedule:
+  # - cron: "0 5 * * *"
+
+# This script is using PubSub+ Cloud deployment with following REST connection details in secrets
+# PSCLOUD_USER, PSCLOUD_PASS, PSCLOUD_HOST, PSCLOUD_VPN
+# It is also using a GCP project and service account key provided in secrets
+# GCP_PROJECT_ID, GCP_SA_KEY
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: main
+
+    - name: Set env
+      run: |
+        TEST_PREFIX=gha-$(date +%s)
+        echo "TEST_PREFIX=$TEST_PREFIX" >> $GITHUB_ENV
+        echo "TEST_TOPIC=$TEST_PREFIX-topic" >> $GITHUB_ENV
+        echo "TEST_SUBSCRIPTION=$TEST_PREFIX-subsciption" >> $GITHUB_ENV
+        echo "TEST_SECRET=$TEST_PREFIX-rest-connection-secret" >> $GITHUB_ENV
+        echo "TEST_RUN_SERVICE=$TEST_PREFIX-connector-service" >> $GITHUB_ENV
+        echo "TEST_IMAGE=gcr.io/${GOOGLE_CLOUD_PROJECT}/$TEST_PREFIX-connector" >> $GITHUB_ENV
+        echo "GOOGLE_CLOUD_REGION=us-east1" >> $GITHUB_ENV
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@master
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Create automation script
+      run: |
+        # Create connection secret
+        echo '{ "Username": "${{ secrets.PSCLOUD_USER }}", "Password": "${{ secrets.PSCLOUD_PASS }}", "Host": "${{ secrets.PSCLOUD_HOST }}" }' > my-solace-rest-connection.txt
+        gcloud secrets create $TEST_SECRET --data-file="./my-solace-rest-connection.txt"
+        # deploy connector code
+        cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus
+        # Submit a build to GCP Container Registry using Google Cloud Build
+        gcloud builds submit --tag $TEST_IMAGE
+        # Deploy to Cloud Run
+        gcloud run $TEST_RUN_SERVICE --image $TEST_IMAGE --no-allow-unauthenticated --platform managed --region $GOOGLE_CLOUD_REGION --set-secrets=SOLACE_BROKER_CONNECTION=$TEST_SECRET:latest
+        # Determine the run service endpoint
+        connector_url=`gcloud run services list | grep $TEST_RUN_SERVICE  | awk '{print $4}'`
+        echo "Connector URL: $connector_url"
+        # Create test topic
+        gcloud pubsub topics create $TEST_TOPIC
+        # Create subscription
+        gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url
+
+    - name: Delete test resources (Cleanup)
+      if: ${{ always() }}
+      run: |
+        # gcloud compute instances delete $VM_NAME --zone us-east1-b --quiet
+        # gcloud compute firewall-rules delete $FIREWALL_RULE --quiet
