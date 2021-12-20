@@ -75,8 +75,8 @@ jobs:
     - name: Delete test resources (Cleanup)
       if: ${{ always() }}
       run: |
-        # gcloud secrets delete $TEST_SECRET --quiet
-        # gcloud container images delete $TEST_IMAGE --quiet
-        # gcloud run services delete $TEST_RUN_SERVICE --quiet --region $GOOGLE_CLOUD_REGION
-        # gcloud pubsub topics delete $TEST_TOPIC --quiet
-        # gcloud pubsub subscriptions delete $TEST_SUBSCRIPTION --quiet
+        gcloud secrets delete $TEST_SECRET --quiet
+        gcloud container images delete $TEST_IMAGE --quiet
+        gcloud run services delete $TEST_RUN_SERVICE --quiet --region $GOOGLE_CLOUD_REGION
+        gcloud pubsub topics delete $TEST_TOPIC --quiet
+        gcloud pubsub subscriptions delete $TEST_SUBSCRIPTION --quiet
