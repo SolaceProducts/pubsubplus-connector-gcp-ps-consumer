@@ -176,13 +176,13 @@ We use a simple flat JSON structure for the connection details:
 ```
 Where:
 * `Host` provides the event broker REST service endpoint IP or FQDN including the port. Transport must be secure, using HTTPS
-* Optional `ServerCA`: if provided, is used to trust the specified Certificate Authority when connecting to the PubSub+ REST server, useful for self-signed server certificates
+* `ServerCA` this is optional, if provided it is used to trust the specified Certificate Authority when connecting to the PubSub+ REST event broker; it is useful for self-signed server certificates
 * `AuthScheme` defines the authentication scheme to use, for details see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
 * Additional fields are specific to the `AuthScheme` used
 
 Secrets can be set and updated through Secret Manager and the Connector service uses the "latest" secret configured.
 
-> Important: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
+> **Important**: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
 ### PubSub+ REST API Client Authentication
 
