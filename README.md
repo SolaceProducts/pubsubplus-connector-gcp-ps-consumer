@@ -373,7 +373,7 @@ Then publish a message to Google Pub/Sub `my-topic`, from [GCP Console](https://
 gcloud pubsub topics publish my-topic \
     --message="Hello World!" --attribute=KEY1=VAL1,KEY2=VAL2
 ```
-... and watch the message arriving in PubSub+
+... and watch the message arriving in PubSub+ :
 
 ![alt text](/images/testmsg-received.png "Message received")
 
