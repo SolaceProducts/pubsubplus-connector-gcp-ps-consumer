@@ -76,7 +76,10 @@ def index():
   SOLACE_DMQ_ELIGIBLE = "true"          # Relevant to Queue destinations
   SOLACE_DELIVERY_MODE = "Persistent"   # Always recommended otherwise PubSub+ REST request is returned with 200 result before the message is persisted
   try:
-    content_type = "application/octet-stream" if (pubsub_message["attributes"]["googclient_schemaencoding"] == "BINARY") else request.headers.get('Content-Type')
+    if ("attributes" in pubsub_message and "googclient_schemaencoding" in pubsub_message["attributes"] and pubsub_message["attributes"]["googclient_schemaencoding"] == "BINARY"):
+      content_type = "application/octet-stream"
+    else:
+      content_type = request.headers.get('Content-Type')
     content_encoding = "UTF-8" if (request.headers.get('Content-Encoding') == None) else request.headers.get('Content-Encoding')
     subscription = envelope["subscription"]
     project = subscription.split("/")[1]
@@ -98,9 +101,10 @@ def index():
     # Additional headers
     if "orderingKey" in pubsub_message:
       headers["Solace-User-Property-orderingKey"] = pubsub_message["orderingKey"]
-    attributes = pubsub_message["attributes"]
-    for key in attributes:
-        headers[f"Solace-User-Property-{key}"] = attributes[key]
+    if ("attributes" in pubsub_message):
+      attributes = pubsub_message["attributes"]
+      for key in attributes:
+          headers[f"Solace-User-Property-{key}"] = attributes[key]
   except:
     msg = "Error parsing Pub/Sub headers"
     logging.warning(f"error: {msg}")

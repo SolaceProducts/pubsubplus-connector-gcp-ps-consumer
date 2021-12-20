@@ -318,6 +318,8 @@ For simplicity we will only create one SA `pubsub-solace-producer-run-sa` in thi
 }
 ```
 
+Note: add `ServerCA` field if your server's certificate signing Certificate Authority is not a public provider, see [here](#solace-pubsub-connection-details-as-gcp-secret) for  more details.
+
 **Step 4: Deploy the Connector in Cloud Run and link it to the Secret**
 
 This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account from Step 2 and the created secret from Step 3 assigned.
@@ -348,8 +350,8 @@ Notice the Connector service trigger URL printed on the console after the deploy
 **Step 5: Create a push Subscription to the Topic and link it to the Connector**
 
 Follow the [instructions to create a Subscription](https://cloud.google.com/pubsub/docs/admin#creating_subscriptions), provide:
+* Subscription ID (name), for example `my-topic-run-sub`
 * Pub/Sub topic name `my-topic` which has been created in Step 2
-* Subscription name, for example `my-topic-run-sub`
 * Select "Push" delivery type
 * Set the Endpoint URL to the Connector service trigger URL from Step 4 (if needed you can look it up running `gcloud run services list`)
 * Set checkbox to Enable Authentication
@@ -380,7 +382,12 @@ gcloud pubsub topics publish my-topic \
 
 ### Cloud Run logs
 
-It is recommended to first [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure to refresh to see the latest logs. If there is a failure the Subscription will keep re-delivering messages and it may be necessary to go to the Pub/Sub Subscription details and purge messages to stop that.
+In case of issues it is recommended to [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure to refresh to see the latest logs. If there is a failure the Subscription will keep re-delivering messages and it may be necessary to go to the Pub/Sub Subscription details and purge messages to stop that.
+
+For more details on the Connector processing change the level of logging to DEBUG in the Python script and redeploy:
+```
+logging.basicConfig(level=logging.DEBUG)
+```
 
 ### Connector local testing
 
