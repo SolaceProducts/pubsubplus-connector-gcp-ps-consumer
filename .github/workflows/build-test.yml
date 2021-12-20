@@ -43,7 +43,7 @@ jobs:
     - name: Create automation script
       run: |
         # Create connection secret
-        echo '{ "Username": "${{ secrets.PSCLOUD_USER }}", "Password": "${{ secrets.PSCLOUD_PASS }}", "Host": "${{ secrets.PSCLOUD_HOST }}" }' > my-solace-rest-connection.txt
+        echo '{ "Username": "${{ secrets.PSCLOUD_USER }}", "Password": "${{ secrets.PSCLOUD_PASS }}", "Host": "${{ secrets.PSCLOUD_HOST }}:9443" }' > my-solace-rest-connection.txt
         gcloud secrets create $TEST_SECRET --data-file="./my-solace-rest-connection.txt"
         # deploy connector code
         cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus
