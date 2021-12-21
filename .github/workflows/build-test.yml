@@ -66,10 +66,10 @@ jobs:
         # Start to listen to messages in the background
         pubSubTools/sdkperf_c -cip=tcps://${{ secrets.PSCLOUD_HOST }}:55443 -cu=${{ secrets.PSCLOUD_USER }}@${{ secrets.PSCLOUD_VPN }} -cp=${{ secrets.PSCLOUD_PASS }} -stl=">" -md > test.out &
         echo "Started listening..."
+        sleep 10 # Wait a bit
         # Publish to the topic
         gcloud pubsub topics publish $TEST_TOPIC --message="Hello World"
         # Check for messages at PubSub+
-        sleep 5 # Wait a bit
         echo "Start dump"
         cat test.out
         echo "End dump"
