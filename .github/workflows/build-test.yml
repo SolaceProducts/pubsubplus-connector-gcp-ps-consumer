@@ -58,8 +58,8 @@ jobs:
         gcloud pubsub topics create $TEST_TOPIC
         # Create subscription
         echo "Creating subscription"
-        echo gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url --push-auth-service-account="${{ secrets.GCP_SA_EMAIL }}"
-        gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url --push-auth-service-account="${{ secrets.GCP_SA_EMAIL }}"
+        echo gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url --push-auth-service-account="${{secrets.GCP_SA_EMAIL}}"
+        gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url --push-auth-service-account="${{secrets.GCP_SA_EMAIL}}"
         # Get sdkperf test tool
         curl -O https://sftp.solace.com/download/SDKPERF_C_LINUX64
         tar -xvf SDKPERF_C_LINUX64
