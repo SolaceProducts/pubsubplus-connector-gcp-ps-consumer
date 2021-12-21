@@ -9,7 +9,7 @@ on:
 # This script is using PubSub+ Cloud deployment with following REST connection details in secrets
 # PSCLOUD_USER, PSCLOUD_PASS, PSCLOUD_HOST - Without https://, PSCLOUD_VPN
 # It is also using a GCP project and service account key provided in secrets
-# GCP_PROJECT_ID, GCP_SA_KEY
+# GCP_PROJECT_ID, GCP_SA_KEY, GCP_SA_EMAIL
 
 jobs:
   build:
@@ -57,7 +57,7 @@ jobs:
         # Create test topic
         gcloud pubsub topics create $TEST_TOPIC
         # Create subscription
-        gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url
+        gcloud pubsub subscriptions create $TEST_SUBSCRIPTION --topic=$TEST_TOPIC --push-endpoint=$connector_url --push-auth-service-account=${{ secrets.GCP_SA_EMAIL }}
         # Get sdkperf test tool
         curl -O https://sftp.solace.com/download/SDKPERF_C_LINUX64
         tar -xvf SDKPERF_C_LINUX64

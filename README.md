@@ -180,7 +180,7 @@ Where:
 * `AuthScheme` defines the authentication scheme to use, for details see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
 * Additional fields are specific to the `AuthScheme` used
 
-Secrets can be set and updated through Secret Manager and the Connector service uses the "latest" secret configured.
+Secrets can be set and updated through Secret Manager and the Connector service uses the "latest" secret configured (updated secret requires re-deploying).
 
 > **Important**: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
@@ -261,13 +261,13 @@ The generated Google JWT contains:
 The recommended event broker configuration is as follows:
 * OAuth authentication enabled
 * OAuth profile defined as follows:
-* `OAuth Role` set as `Client`
-* Ensure that `OAuth Client ID` and `Audience` in the connection secret above are the same
-* `Issuer Identifier` set to `https://accounts.google.com`
-* `Discovery Endpoint`set `https://accounts.google.com/.well-known/openid-configuration`
-* `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used; or `email`, which is the Email setting of the same service account. The corresponding Client Username must then be configured in the broker
-* `Required ID Token Type`is set to `JWT`; and
-* Validate Type is enabled.
+  * `OAuth Role` set as `Client`
+  * Ensure that `OAuth Client ID` and `Audience` in the connection secret above are the same
+  * `Issuer Identifier` set to `https://accounts.google.com`
+  * `Discovery Endpoint`set `https://accounts.google.com/.well-known/openid-configuration`
+  * `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used; or `email`, which is the Email setting of the same service account. The corresponding Client Username must then be configured in the broker
+  * `Required ID Token Type`is set to `JWT`; and
+  * Validate Type is enabled.
 
 ## Connector Implementation
 
@@ -375,7 +375,7 @@ In both cases, ensure to set the subscription to `gcp/pubsub/>`, which is a wild
 Then publish a message to Google Pub/Sub `my-topic`, from [GCP Console](https://cloud.google.com/pubsub/docs/publisher#publishing_messages) or using the command line:
 ```
 gcloud pubsub topics publish my-topic \
-    --message="Hello World!" --attribute=KEY1=VAL1,KEY2=VAL2
+    --message="Hello World!"
 ```
 Then see the message arriving in PubSub+:
 
