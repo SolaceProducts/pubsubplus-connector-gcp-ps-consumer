@@ -67,6 +67,7 @@ jobs:
         pubSubTools/sdkperf_c -cip=tcps://${{ secrets.PSCLOUD_HOST }}:55443 -cu=${{ secrets.PSCLOUD_USER }}@${{ secrets.PSCLOUD_VPN }} -cp=${{ secrets.PSCLOUD_PASS }} -stl=">" -md > test.out &
         echo "Started listening..."
         sleep 10 # Wait a bit
+        pubSubTools/sdkperf_c -cip=tcps://${{ secrets.PSCLOUD_HOST }}:55443 -cu=${{ secrets.PSCLOUD_USER }}@${{ secrets.PSCLOUD_VPN }} -cp=${{ secrets.PSCLOUD_PASS }}  -mn=10 -mr=0 -ptl=t1 -stl=t1 | grep "Total Messages"
         # Publish to the topic
         gcloud pubsub topics publish $TEST_TOPIC --message="Hello World"
         # Check for messages at PubSub+
