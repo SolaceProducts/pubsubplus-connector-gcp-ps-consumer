@@ -69,8 +69,10 @@ jobs:
         # Publish to the topic
         gcloud pubsub topics publish $TEST_TOPIC --message="Hello World"
         # Check for messages at PubSub+
-        sleep 20 # Wait a bit
+        sleep 5 # Wait a bit
+        echo "Start dump"
         cat test.out
+        echo "End dump"
         cat test.out | grep "Hello Wo"
 
 
