@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Module contains a sample implementation of a connctor that forwards messages form GCP Pub/Sub to Solace PubSub+
+# Module contains a sample implementation of a connector that forwards messages form GCP Pub/Sub to Solace PubSub+
 # See below for user modifiable VARIABLES
 
 import http.client
@@ -28,7 +28,7 @@ import ssl
 import logging
 import sys
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARN)
 
 # Adjust to set PubSub+ broker destination
 SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
@@ -115,6 +115,13 @@ def index():
   # SOLACE_BROKER_CONNECTION env example: {"Host":"https://myhost:9443","AuthScheme":"basic","Username":"myuser","Password":"mypass"}
   def get_conn_config() -> dict[str, str]:
     secret = os.environ.get("SOLACE_BROKER_CONNECTION")
+    secret = """{
+  "Host": "https://reza-gcp-pubsub-test.soltest.net:9443",
+  "AuthScheme": "basic",
+  "Username": "default",
+  "Password": "default"
+}"""
+    logging.debug(f"secret: {secret}")
     return secret
   try:
     mysecret = get_conn_config()
@@ -169,14 +176,14 @@ def index():
       path += f"/{subscription_name}"         # Add subscription_name to the topic
     conn = http.client.HTTPSConnection(host, timeout=10, context = ssl_context )
     logging.debug(f"Headers: {headers}")
-    logging.info(f"Sending message to {path}")
+    logging.info(f"Connecting now to host {host} using secure connection to send message to {path}")
     conn.request("POST", path, payload, headers)
     response = conn.getresponse()
     logging.debug(f"Got Solace PubSub+ response {response.status}")
     return ("", response.status)
   except:
     type, value, traceback = sys.exc_info()
-    msg = "Error sending message to PubSub+ event event broker REST API"
+    msg = "Error sending message to PubSub+ event broker REST API"
     logging.warning(f"error: {msg}, details: {type}, {value}")
     return f"Unexpected error: {msg}", 400
   finally:

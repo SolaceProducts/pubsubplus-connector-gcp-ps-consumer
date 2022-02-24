@@ -86,7 +86,7 @@ The following REST to Solace-specific HTTP message conversions apply:
 | Content-Encoding HTTP header | Must be `UTF-8` for  the `text` message type. Become available as a message attribute. | [HTTP Content-Type Mapping to Solace Message Types](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Ref393980206)
 | Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding Solace-specific message REST attribute or property | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
 | REST request body| The message body (application data) |
-| REST HTTP response | For persistent messages, the 200 OK is returned after the message has been successfully stored on the event broker, otherwise an error code | [HTTP Responses from Event Broker to REST HTTP Clients](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Status-Codes.htm#Producer-on-Post)
+| REST HTTP response | A 200 OK response is returned after the event broker successfully processed the request, otherwise an error code. For persistent messages, processing includes that they have been successfully stored on the event broker. | [HTTP Responses from Event Broker to REST HTTP Clients](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Status-Codes.htm#Producer-on-Post)
 
 ### Pub/Sub Message contents to Solace Message Mapping
 
@@ -176,11 +176,11 @@ We use a simple flat JSON structure for the connection details:
 ```
 Where:
 * `Host` provides the event broker REST service endpoint IP or FQDN including the port. Transport must be secure, using HTTPS
-* `ServerCA` this is optional, if provided it is used to trust the specified Certificate Authority when connecting to the PubSub+ REST event broker; it is useful for self-signed server certificates
+* `ServerCA` this is optional, if provided it is used to trust the specified Certificate Authority when connecting to the PubSub+ REST event broker; it is useful for self-signed server certificates. **Note**: Python TLS library tighter security requires that the broker name has to be in the "Subject Alternative Name" of the used certificate.
 * `AuthScheme` defines the authentication scheme to use, for details see the [PubSub+ REST API Client authentication](#pubsub-rest-api-client-authentication) section below.
 * Additional fields are specific to the `AuthScheme` used
 
-Secrets can be set and updated through Secret Manager and the Connector service uses the "latest" secret configured (updated secret requires re-deploying).
+Secrets can be set and updated through Secret Manager. Although the Connector service is configured to use the Secret with the tag "latest", it must be re-deployed to pick up changes if there has been any update to the Secret.
 
 > **Important**: The Google IAM Service Account used by the Connector service in Cloud Run must include the role of `Secret Manager Secret Accessor`.
 
@@ -189,7 +189,7 @@ Secrets can be set and updated through Secret Manager and the Connector service 
 The following authentication schemes are supported:
 * Basic
 * Client Certificate
-* OAuth 2.0 (PubSub+ release 9.13 and later)
+* OAuth 2.0 (PubSub+ release 9.13.1 and later)
 
 The PubSub+ Event Broker must be configured to use one of the above options for REST API clients. For more details refer to the [Solace documentation about Client Authentication](https://docs.solace.com/Overviews/Client-Authentication-Overview.htm).
 
@@ -296,15 +296,15 @@ Get access to:
 
 [Enable GCP services](https://cloud.google.com/service-usage/docs/enable-disable), including "IAM", "Pub/Sub", "Secret Manger", "Cloud Run" and its dependency, the "Container Registry".
 
-[Install Google Cloud SDK](https://cloud.google.com/sdk/docs/install#managing_an_installation) and [initialize it](https://cloud.google.com/sdk/docs/initializing).
+[Install Google Cloud SDK](https://cloud.google.com/sdk/docs/install#managing_an_installation) and [initialize it](https://cloud.google.com/sdk/docs/initializing). Ensure to use `gcloud` version `365.0.1` or later as older versions have limited support for the fully managed version of Cloud Run.
 
 **Step 2: Setup Prerequisites**
 
 Create the following in GCP:
 * A [Pub/Sub topic](https://cloud.google.com/pubsub/docs/quickstart-console#create_a_topic) `my-topic` for which messages are  forwarded to a PubSub+ event broker.
 * [IAM Service Account(s)](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) - a common SA with both roles would suffice, separate SAs are recommended for better security:
-  * SA to be used by Pub/Sub Subscription, with role `Cloud Run Invoker`; and
-  * SA for the Connector service in Cloud Run, with role `Secret Manager Secret Accessor`
+  * SA1 to be used by Pub/Sub Subscription, with role `Cloud Run Invoker`; and
+  * SA2 for the Connector service in Cloud Run, with role `Secret Manager Secret Accessor`
 
 For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this quickstart with both roles.
 
@@ -326,7 +326,7 @@ For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this qu
 
 **Step 4: Deploy the Connector in Cloud Run and Link It to the Secret**
 
-This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account from Step 2 and the created secret from Step 3 assigned.
+This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account (this refers to SA2) from Step 2 and the created secret from Step 3 assigned.
 
 Run following in a shell, replacing `<PROJECT_ID>` and `<REGION>` from your GCP project.
 
@@ -359,7 +359,7 @@ Follow the [instructions to create a Subscription](https://cloud.google.com/pubs
 * Select "Push" delivery type
 * Set the Endpoint URL to the Connector service trigger URL from Step 4 (if needed you can look it up running `gcloud run services list`)
 * Set checkbox to Enable Authentication
-* Set the service account to `pubsub-solace-producer-run-sa`
+* Set the service account to `pubsub-solace-producer-run-sa` (This refers to SA1 in Step 2 if using separate service accounts)
 
 With this the Subscription becomes active and the system is ready for testing!
 
@@ -380,6 +380,15 @@ gcloud pubsub topics publish my-topic \
 Then see the message arriving in PubSub+:
 
 ![alt text](/images/testmsg-received.png "Message received")
+
+**Deleting the deployment**
+
+Delete following artifacts at the respective GCP console pages if no longer needed:
+* Push Subscription
+* Cloud Run Connector service
+* Secret
+* Service Account(s)
+* Pub/Sub Topic
 
 ## Troubleshooting
 
