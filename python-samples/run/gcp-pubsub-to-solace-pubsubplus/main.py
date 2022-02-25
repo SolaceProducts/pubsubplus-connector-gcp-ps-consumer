@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Module contains a sample implementation of a connector that forwards messages form GCP Pub/Sub to Solace PubSub+
-# See below for user modifiable VARIABLES
+# Module contains a sample implementation of a connector that forwards messages from GCP Pub/Sub to Solace PubSub+
+# See below for user modifiable VARIABLES (they are in all capitals and begin with SOLACE_)
 
 import http.client
 import requests
@@ -28,6 +28,9 @@ import ssl
 import logging
 import sys
 
+#
+## Adjust log level here - options include WARN, INFO, DEBUG
+#
 logging.basicConfig(level=logging.WARN)
 
 # Adjust to set PubSub+ broker destination
@@ -112,15 +115,11 @@ def index():
 
   # Determine PubSub+ event broker connection details
   # Making use of env set from GCP Secret
-  # SOLACE_BROKER_CONNECTION env example: {"Host":"https://myhost:9443","AuthScheme":"basic","Username":"myuser","Password":"mypass"}
+  # SOLACE_BROKER_CONNECTION env example: {"Host":"https://myhost:9443",
+  #                                        "AuthScheme":"basic","Username":"myuser","Password":"mypass"
+  #                              optional: ,"ServerCA":"-----BEGIN CERTIFICATE-----\\n...etc..." }
   def get_conn_config() -> dict[str, str]:
     secret = os.environ.get("SOLACE_BROKER_CONNECTION")
-    secret = """{
-  "Host": "https://reza-gcp-pubsub-test.soltest.net:9443",
-  "AuthScheme": "basic",
-  "Username": "default",
-  "Password": "default"
-}"""
     logging.debug(f"secret: {secret}")
     return secret
   try:
@@ -132,6 +131,7 @@ def index():
       host = host.split("https://")[1]
     # Prep SSL context, load server CA if provided
     if "ServerCA" in pubsubplus_connection:
+      logging.debug("Trying to load Server CA")
       ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cadata=pubsubplus_connection["ServerCA"])
       logging.debug("Server CA loaded")
     else:
