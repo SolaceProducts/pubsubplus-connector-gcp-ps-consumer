@@ -17,6 +17,7 @@ Contents:
       - [Client Certificate Authentication](#client-certificate-authentication)
       - [OAuth 2.0 Authentication](#oauth-2.0-authentication)
   * [Connector Implementation](#connector-implementation)
+  * [Performance considerations](#performance-considerations)
   * [Quick Start](#quick-start)
   * [Troubleshooting](#troubleshooting)
     + [Cloud Run Logs](#cloud-run-logs)
