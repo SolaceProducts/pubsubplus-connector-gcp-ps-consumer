@@ -119,7 +119,7 @@ The sample Connector maps information from this JSON object to PubSub+ REST API 
 |------------------|-------------|
 | `message.attributes` | User `Property Map` of type `String` for each attribute present, example: `Key 'AA' (STRING) BB` |
 | `message.data` |  Payload, base64-decoded from `message.data` |
-| `message.messageId` | Message ID |
+| `message.messageId` | Application Message ID |
 | `message.orderingKey` (if present) | User `Property Map` of type `String` |
 | `message.publishTime` (RFC3339 encoded) | Timestamp (milliseconds since Epoch) |
 | `subscription` | User `Property Map` of type `String`, key `google_pubsub_subscription` (full `subscription` string) |
@@ -283,6 +283,18 @@ Processing is straightforward:
 1. Authentication info is prepared depending on the authentication scheme obtained from the secret: for example an `Authentication` header may be added
 1. An HTTPS connection is opened to Solace PubSub+ REST API and the prepared REST message including headers and payload is sent. This includes the request path which defines the destination of the Solace message. This sample sends the Solace message to a PubSub+ event topic that includes the name of the subscription: `gcp/pubsub/{subscription}`
 1. REST response from PubSub+ is obtained and returned as the overall result of the processing
+
+## Performance considerations
+
+GCP Pub/Sub delivers each published message [at least once for every subscription](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery). This means that message duplicates may happen, which will also be published to Solace PubSub+. The PubSub+ ApplicationMessageId, taken from the guaranteed unique Pub/Sub message id, can be used to identify duplicates.
+
+GCP Pub/Sub messages may also be delivered out of order to the PubSub+ event broker.
+
+To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the the same GCP `ordering_key` and the same region of message publishing.
+
+To support ordering, following settings must also be enabled:
+* The Pub/Sub subscription must have Message ordering enabled. Note that this cannot be changed for an existing subscription, create a new subscription if required.
+* Use the same ordering key for each message sent to the Pub/Sub topic.
 
 ## Quick Start
 
