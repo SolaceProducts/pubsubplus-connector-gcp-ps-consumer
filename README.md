@@ -291,7 +291,7 @@ GCP Pub/Sub delivers each published message [at least once for every subscriptio
 
 GCP Pub/Sub messages may also be delivered out of order to the PubSub+ event broker.
 
-To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the the same GCP `ordering_key` and the same region of message publishing.
+To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the same GCP `ordering_key` and the same region of message publishing.
 
 To support ordering, following settings must also be enabled:
 * The Pub/Sub subscription must have Message ordering enabled. Note that this cannot be changed for an existing subscription, create a new subscription if required.
