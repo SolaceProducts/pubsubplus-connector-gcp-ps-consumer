@@ -341,25 +341,30 @@ For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this qu
 
 This step involves building a container image from the Connector source code, then deploying it into Cloud Run with the service account (this refers to SA2) from Step 2 and the created secret from Step 3 assigned.
 
-Run following in a shell, replacing `<PROJECT_ID>` and `<REGION>` from your GCP project.
+Run following in a shell, replacing `<PROJECT_ID>` and `<REGION>` from your GCP project and updating the `IMAGE_NAME` etc. artifact names if required.
 
 ```bash
 # TODO: provide <PROJECT_ID> and <REGION>
 export GOOGLE_CLOUD_PROJECT=<PROJECT_ID>
 export GOOGLE_CLOUD_REGION=<REGION>
+# TODO: update as required
+export IMAGE_NAME=my-connector-image
+export SERVICEACCOUNT_SA2_NAME=pubsub-solace-producer-run-sa
+export SECRET_NAME=my-solace-rest-connection-secret
+export RUN_SERVICE_NAME=gcp-solace-connector-service
 # Get source from the GitHub repo
 git clone https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer.git
 cd pubsubplus-connector-gcp-ps-consumer/python-samples/run/gcp-pubsub-to-solace-pubsubplus/
 # Submit a build to GCP Container Registry using Google Cloud Build
-gcloud builds submit --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer
+gcloud builds submit --tag gcr.io/${GOOGLE_CLOUD_PROJECT}/${IMAGE_NAME}
 # Deploy to Cloud Run
-gcloud run deploy gcp-solace-connector-service \
-    --image gcr.io/${GOOGLE_CLOUD_PROJECT}/pubsub-solace-producer \
+gcloud run deploy ${RUN_SERVICE_NAME} \
+    --image gcr.io/${GOOGLE_CLOUD_PROJECT}/${IMAGE_NAME} \
     --no-allow-unauthenticated \
     --platform managed \
     --region ${GOOGLE_CLOUD_REGION} \
-    --service-account=pubsub-solace-producer-run-sa@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com \
-    --set-secrets=SOLACE_BROKER_CONNECTION=my-solace-rest-connection-secret:latest
+    --service-account=${SERVICEACCOUNT_SA2_NAME}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com \
+    --set-secrets=SOLACE_BROKER_CONNECTION=${SECRET_NAME}:latest
 ```
 
 Notice the Connector service trigger URL printed on the console after the deployment has been created.
