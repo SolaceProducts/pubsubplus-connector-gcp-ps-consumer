@@ -414,7 +414,7 @@ Delete following artifacts at the respective GCP console pages if no longer need
 
 In case of issues, it is recommended to [check the logs in Cloud Run](https://cloud.google.com/run/docs/logging#viewing-logs-cloud-run). Ensure that you refresh to see the latest logs. If there is a failure the Subscription, it keeps re-delivering messages and it may be necessary to go to the Pub/Sub Subscription details to purge messages to stop re-delivery.
 
-For more details on the Connector processing, change the level of logging to DEBUG in the Python script and redeploy:
+For more details on the Connector processing, change the level of logging to DEBUG in the Python script, rebuild the image and redeploy:
 ```
 logging.basicConfig(level=logging.DEBUG)
 ```
