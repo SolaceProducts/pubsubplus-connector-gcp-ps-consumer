@@ -15,7 +15,7 @@ Contents:
     + [PubSub+ REST API Client Authentication](#pubsub-rest-api-client-authentication)
       - [Basic Authentication](#basic-authentication)
       - [Client Certificate Authentication](#client-certificate-authentication)
-      - [OAuth 2.0 Authentication](#oauth-2.0-authentication)
+      - [OAuth 2.0 Authentication](#oauth-20-authentication)
   * [Connector Implementation](#connector-implementation)
   * [Performance considerations](#performance-considerations)
   * [Quick Start](#quick-start)
@@ -31,6 +31,8 @@ Contents:
 ## Introduction
 
 From the [many options to connect](https://www.solace.dev/), a growing number of third-party and cloud-native applications choose the Solace PubSub+ _REST API_ to stream events into the [PubSub+ event mesh](https://solace.com/solutions/initiative/event-mesh/). PubSub+ offers a flexible, inbound REST interface. This guide shows you how to make use of it as an example of publishing events from [Google Cloud Platform (GCP) Pub/Sub service](https://cloud.google.com/pubsub/docs/overview) to Solace PubSub+.
+
+Users are encouraged to modify this quickstart to accommodate other approaches or even publishing from other cloud services.
 
 ## Prerequisites
 
@@ -287,11 +289,13 @@ Processing is straightforward:
 
 ## Performance considerations
 
+For simplicity, this quickstart leverages GCP Pub/Sub Push delivery.  A GCP Pub/Sub Pull delivery approach may yield greater performance.
+
 GCP Pub/Sub delivers each published message [at least once for every subscription](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery). This means that message duplicates may happen, which will also be published to Solace PubSub+. The PubSub+ ApplicationMessageId, taken from the guaranteed unique Pub/Sub message id, can be used to identify duplicates.
 
 GCP Pub/Sub messages may also be delivered out of order to the PubSub+ event broker.
 
-To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the same GCP `ordering_key` and the same region of message publishing.
+To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the same GCP `ordering_key` for all messages and the same region of message publishing.
 
 To support ordering, following settings must also be enabled:
 * The Pub/Sub subscription must have Message ordering enabled. Note that this cannot be changed for an existing subscription, create a new subscription if required.
