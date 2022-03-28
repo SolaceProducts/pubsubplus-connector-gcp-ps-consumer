@@ -232,7 +232,7 @@ When you use Client Certificate authentication, no Authorization header is requi
 
 #### OAuth 2.0 Authentication
 
-Since the Connector service runs in GCP, this example shows how to conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) which returns a JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service ([SA2](#service-account-sa2)).
+Since the Connector service runs in GCP, this example shows how to conveniently use Google as OAuth provider. The connector can easily obtain [an identity token from the Cloud Run metadata server API](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) which returns a JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service (["SA2", as referenced later in this guide](#service-account-sa2)).
 
 The OAuth token is conveyed in the authorization header of the REST request, for example:
 ```
