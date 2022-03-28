@@ -87,7 +87,7 @@ The following REST to Solace-specific HTTP message conversions apply:
 | Authorization  HTTP header | May support client authentication depending on the authentication scheme used | [Client Authentication](https://docs.solace.com/RESTMessagingPrtl/Solace-Router-Interactions.htm#Client)
 | Content-Type HTTP header | Determines a `text` or `binary` message type. Becomes available as a message attribute. | [HTTP Content-Type Mapping to Solace Message Types](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Ref393980206)
 | Content-Encoding HTTP header | Must be `UTF-8` for  the `text` message type. Become available as a message attribute. | [HTTP Content-Type Mapping to Solace Message Types](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Ref393980206)
-| Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding Solace-specific message REST attribute or property | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
+| Solace-specific HTTP headers | If a header is present, it can be used to set the corresponding Solace-specific message REST attribute or property. **Important:** if setting Solace Client Name, ensure it is unique across all messages otherwise it may result in contention. | [Solace-Specific HTTP Headers](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm#_Toc426703633)
 | REST request body| The message body (application data) |
 | REST HTTP response | A 200 OK response is returned after the event broker successfully processed the request, otherwise an error code. For persistent messages, processing includes that they have been successfully stored on the event broker. | [HTTP Responses from Event Broker to REST HTTP Clients](https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Status-Codes.htm#Producer-on-Post)
 
@@ -289,17 +289,17 @@ Processing is straightforward:
 
 ## Performance considerations
 
-For simplicity, this quickstart leverages GCP Pub/Sub Push delivery.  A GCP Pub/Sub Pull delivery approach may yield greater performance.
+GCP Pub/Sub messages [may be delivered out of order](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery) to the PubSub+ event broker.
 
-GCP Pub/Sub delivers each published message [at least once for every subscription](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery). This means that message duplicates may happen, which will also be published to Solace PubSub+. The PubSub+ ApplicationMessageId, taken from the guaranteed unique Pub/Sub message id, can be used to identify duplicates.
+* To minimize out-of-order delivery, enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering). Any messages having the same ordering key will be delivered exactly once and in order.
 
-GCP Pub/Sub messages may also be delivered out of order to the PubSub+ event broker.
-
-To minimize out-of-order and duplicate delivery it is recommended to enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering) by making use of the same GCP `ordering_key` for all messages and the same region of message publishing.
+> **Note** ordering has an impact on maximum message rate: throughput is the highest with no ordering key used, followed by using multiple ordering keys (several groups of messages, each group with unique ordering key), and the lowest throughput is if all messages are using the same ordering key (all messages delivered sequentially).
 
 To support ordering, following settings must also be enabled:
 * The Pub/Sub subscription must have Message ordering enabled. Note that this cannot be changed for an existing subscription, create a new subscription if required.
-* Use the same ordering key for each message sent to the Pub/Sub topic.
+* Use the same ordering key for messages sent to the Pub/Sub topic, as required.
+
+It should be also noted that for simplicity, this quickstart leverages GCP Pub/Sub Push delivery. A GCP Pub/Sub Pull delivery approach may yield greater performance.
 
 ## Quick Start
 

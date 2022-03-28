@@ -88,8 +88,7 @@ def index():
     project = subscription.split("/")[1]
     subscription_name = subscription.split("/")[3]
     headers = {
-      #"Authorization": auth,
-      "Solace-Client-Name": SOLACE_CLIENT_NAME,
+      # "Solace-Client-Name": if set, ensure this is unique across all messages
       "Solace-Message-ID": pubsub_message["messageId"],
       "Solace-Delivery-Mode": SOLACE_DELIVERY_MODE,
       "Solace-Time-To-Live-In-ms": SOLACE_TIME_TO_LIVE_MS,
