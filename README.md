@@ -232,7 +232,7 @@ When you use Client Certificate authentication, no Authorization header is requi
 
 #### OAuth 2.0 Authentication
 
-Since the Connector service runs in GCP, this example shows how to conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) which returns a JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service.
+Since the Connector service runs in GCP, this example shows how to conveniently use Google as OAuth provider. An identity token can be [easily obtained from the Cloud Run metadata server](https://cloud.google.com/run/docs/securing/service-identity#fetching_identity_and_access_tokens_using_the_metadata_server) which returns a JWT Id-token associated with the identity of the Google IAM Service Account used by the Connector service ([SA2](#service-account-sa2)).
 
 The OAuth token is conveyed in the authorization header of the REST request, for example:
 ```
@@ -243,15 +243,15 @@ The connection secret can be provided as follows:
 {
   "Host": "https://myhost:9443",
   "AuthScheme": "oauth",
-  "Audience": "myaudience"
+  "Audience": "myAudience"
 }
 ```
-where `Audience` is the `OAuth Client ID` in the OAuth profile configured on the event broker.
+where `Audience` and the `OAuth Client ID` in the OAuth profile configured on the event broker must be set to the same case-sensitive string.
 
 The generated Google JWT contains:
 ```json
 {
-  "aud": "myaudience",
+  "aud": "myAudience",
   "azp": "123456789",
   "email": "my-service-account-name@my-gcp-project-1234.iam.gserviceaccount.com",
   "email_verified": true,
@@ -261,16 +261,19 @@ The generated Google JWT contains:
   "sub": "123456789"
 }
 ```
-The recommended event broker configuration is as follows:
-* OAuth authentication enabled
-* OAuth profile defined as follows:
+
+Note: `azp` and `email` fields are the service account's ([SA2](#service-account-sa2)) "OAuth 2 Client ID" and "Email" properties, that can be looked up at the GCP IAM&Admin console, Service Accounts.
+
+For the recommended [event broker OAuth access control configuration](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#OAuth), provide following settings (leave everything else at default):
+
+* [OAuth profile defined](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Managing-OAuth-Profiles) as follows:
+  * [OAuth authentication enabled](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Authentication.htm#Enabling) (at the Message VPN level)
+  * Set OAuth `Client ID` to the same case-sensitive string as `Audience` in the connection secret above. Note: Client Secret is not used here.
   * `OAuth Role` set as `Client`
-  * Ensure that `OAuth Client ID` and `Audience` in the connection secret above are the same
   * `Issuer Identifier` set to `https://accounts.google.com`
   * `Discovery Endpoint`set `https://accounts.google.com/.well-known/openid-configuration`
-  * `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used; or `email`, which is the Email setting of the same service account. The corresponding Client Username must then be configured in the broker
-  * `Required ID Token Type`is set to `JWT`; and
-  * Validate Type is enabled.
+  * `Username Claim Name`, that defines which claim from above JWT to be used to derive the Username. It can be set either to `azp` (meaning authorized party), the "OAuth 2 Client ID" associated to the Google service account used by the Connector service ([SA2](#service-account-sa2)); or `email`, which is the Email setting of the same service account. Note: the corresponding [Client Username must then be configured](https://docs.solace.com/Configuring-and-Managing/Configuring-Client-Usernames.htm) in the broker
+  * `Validate Type` is enabled; and the `Required ID Token Type` is set to `JWT`
 
 ## Connector Implementation
 
@@ -321,7 +324,7 @@ Create the following in GCP:
 * A [Pub/Sub topic](https://cloud.google.com/pubsub/docs/quickstart-console#create_a_topic) `my-topic` for which messages are  forwarded to a PubSub+ event broker.
 * [IAM Service Account(s)](https://cloud.google.com/iam/docs/creating-managing-service-accounts#creating) - a common SA with both roles would suffice, separate SAs are recommended for better security:
   * SA1 to be used by Pub/Sub Subscription, with role `Cloud Run Invoker`; and
-  * SA2 for the Connector service in Cloud Run, with role `Secret Manager Secret Accessor`
+  * SA2 for the Connector service in Cloud Run, with role `Secret Manager Secret Accessor`<a name="service-account-sa2"></a>
 
 For simplicity, we only create one SA `pubsub-solace-producer-run-sa` in this quickstart with both roles.
 
