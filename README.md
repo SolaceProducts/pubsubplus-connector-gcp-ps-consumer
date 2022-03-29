@@ -253,7 +253,7 @@ The generated Google JWT contains:
 {
   "aud": "myAudience",
   "azp": "123456789",
-  "email": "my-service-account-name@my-gcp-project-1234.iam.gserviceaccount.com",
+  "email": "pubsub-solace-producer-run-sa@my-gcp-project-1234.iam.gserviceaccount.com",
   "email_verified": true,
   "exp": 1638980106,
   "iat": 1638976506,
