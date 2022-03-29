@@ -29,23 +29,26 @@ import logging
 import sys
 
 #
-## Adjust log level here - options include WARN, INFO, DEBUG
+## @User TODO: Review and adjust following parameters as required
 #
+# Set log level here - options include WARN, INFO, DEBUG
 logging.basicConfig(level=logging.WARN)
-
 # Adjust to set PubSub+ broker destination
 SOLACE_DESTINATION_TYPE = "TOPIC"    # Options are TOPIC or QUEUE
 SOLACE_DESTINATION_NAME = "gcp/pubsub"  # The broker destination topic or queue name (queue must exist on the broker)
 SOLACE_TOPIC_APPEND_SUBSCRIPTIONNAME = True # Append subscription name to above destination, e.g.: gcp/pubsub/my-subscription
+# In this example following Solace message properties don't take values from the Pub/Sub message:
+SOLACE_TIME_TO_LIVE_MS = "604800000"  # Represents 1 week
+SOLACE_DMQ_ELIGIBLE = "true"          # Relevant to Queue destinations
+SOLACE_DELIVERY_MODE = "Persistent"   # Always recommended otherwise PubSub+ REST request is returned with 200 result before the message is persisted
 
 app = Flask(__name__)
 # Handle trigger from Pub/Sub subscription
 @app.route("/", methods=["POST"])
 def index():
   #
-  # Process and verify Pub/Sub message
+  ## Process and verify Pub/Sub message
   #
-
   # Verify Pub/Sub message contents
   logging.debug(f"Received request: {request}")
   envelope = request.get_json()
@@ -69,15 +72,10 @@ def index():
   logging.debug(f"Decoded Pub/Sub payload: {payload}")
 
   #
-  # Format and forward message to Solace PubSub+
+  ## Format and forward message to Solace PubSub+
   #
 
   # Header settings. Refer to https://docs.solace.com/RESTMessagingPrtl/Solace-REST-Message-Encoding.htm
-  # In this example following properties don't take values from the Pub/Sub message:
-  SOLACE_CLIENT_NAME = "TestGooglePubSubClient" # This is actually not a message property but identifies the REST client
-  SOLACE_TIME_TO_LIVE_MS = "604800000"  # Represents 1 week
-  SOLACE_DMQ_ELIGIBLE = "true"          # Relevant to Queue destinations
-  SOLACE_DELIVERY_MODE = "Persistent"   # Always recommended otherwise PubSub+ REST request is returned with 200 result before the message is persisted
   try:
     if ("attributes" in pubsub_message and "googclient_schemaencoding" in pubsub_message["attributes"] and pubsub_message["attributes"]["googclient_schemaencoding"] == "BINARY"):
       content_type = "application/octet-stream"
@@ -167,7 +165,9 @@ def index():
     logging.warning(f"error: {msg}, details: {type}, {value}")
     return f"Service Unavailable: {msg}", 503
 
-  # Send REST message to PubSub+ event broker, get response and return that
+  #
+  ## Send REST message to PubSub+ event broker, get response and return that back to Pub/Sub
+  #
   try:
     # First determine destination
     path = f"/{SOLACE_DESTINATION_TYPE}/{SOLACE_DESTINATION_NAME}"
@@ -189,12 +189,14 @@ def index():
     conn.close()
 
 if __name__ == "__main__":
-  PORT = int(os.getenv("PORT")) if os.getenv("PORT") else 8080
-
-  # This is used when running locally. Gunicorn is used to run the
+  #
+  # This code is used when running locally. Otherwise Gunicorn is used to run the
   # application on Cloud Run. See entrypoint in Dockerfile.
   #
-  # Sample REST test message:
+
+  PORT = int(os.getenv("PORT")) if os.getenv("PORT") else 8080
+
+  # Sample REST test message thatcan be used for local testing:
   # POST http://127.0.0.1:8080
   # {
   #   "message": {
