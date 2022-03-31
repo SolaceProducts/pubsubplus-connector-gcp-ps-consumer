@@ -292,9 +292,13 @@ Processing is straightforward:
 
 ## Performance considerations
 
-GCP Pub/Sub messages [may be delivered out of order](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery) to the PubSub+ event broker.
+Using GCP Pub/Sub subscription default options message duplicates may happen, which will also be published to Solace PubSub+. The PubSub+ "ApplicationMessageId", taken from the guaranteed unique Pub/Sub message id, can be used to identify duplicates.
 
-* To minimize out-of-order delivery, enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering). Any messages having the same ordering key will be delivered exactly once and in order.
+* To minimize duplicates there is an option to enable [Exactly once delivery](https://cloud.google.com/pubsub/docs/exactly-once-delivery#console) when creating the subscription. Note that this option was a pre-GA feature at the time of writing.
+
+GCP Pub/Sub messages [may also be delivered out of order](https://cloud.google.com/pubsub/docs/subscriber#at-least-once-delivery) to the PubSub+ event broker.
+
+* To minimize out-of-order and duplicate delivery at the same time, enable Pub/Sub [message ordering](https://cloud.google.com/pubsub/docs/ordering). Any messages having the same ordering key will be delivered exactly once and in order.
 
 > **Note** ordering has an impact on maximum message rate: throughput is the highest with no ordering key used, followed by using multiple ordering keys (several groups of messages, each group with unique ordering key), and the lowest throughput is if all messages are using the same ordering key (all messages delivered sequentially).
 
