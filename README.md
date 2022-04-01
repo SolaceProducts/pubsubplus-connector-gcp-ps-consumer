@@ -1,4 +1,4 @@
-[![Actions Status](https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer/workflows/build-test/badge.svg?branch=main)](https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer/actions?query=workflow%3Abuild+branch%3Amain)
+[![Actions Status](https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer/workflows/build/badge.svg?branch=main)](https://github.com/SolaceProducts/pubsubplus-connector-gcp-ps-consumer/actions?query=workflow%3Abuild+branch%3Amain)
 
 # GCP Pub/Sub to Solace PubSub+ REST-Based Event Publishing Guide
 
